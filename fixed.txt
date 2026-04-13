@@ -1,0 +1,40 @@
+You are a senior software architect and technical project planner.
+
+Based on the following system description, generate a detailed and practical implementation plan for a GPS-based Garbage Detection System.
+
+The system follows a layered client–server architecture consisting of:
+
+* Presentation Layer: Mobile app (citizens & inspectors) + Web dashboard (admin monitoring & management)
+* Application Layer: Backend server with RESTful APIs handling authentication, report processing, validation, and workflow management
+* Data Layer: Relational/hybrid database for structured data (users, reports, status) and storage for unstructured data (images)
+
+Core system features include:
+
+* User authentication and role management
+* Garbage reporting with image upload, classification, severity level
+* Automatic GPS geo-tagging and timestamps
+* Report status tracking and admin updates
+* Interactive map visualization with filtering and clustering
+
+The backend must ensure:
+
+* Secure API design (authentication, authorization, validation)
+* Scalable architecture
+* Efficient handling of image storage and retrieval
+
+The system also integrates mapping services for visualization and analytics.
+
+Your task:
+Create a step-by-step technical plan that includes:
+
+1. System architecture design (tech stack recommendations for frontend, backend, database, APIs)
+2. Database schema design (key entities and relationships)
+3. API design (main endpoints and responsibilities)
+4. Development phases (iteration plan with milestones)
+5. Deployment strategy (hosting, CI/CD, scalability considerations)
+6. Security practices
+7. Risk mitigation strategies (GPS accuracy, data size, privacy)
+8. Optional: AI model integration for garbage classification (if applicable)
+
+Keep the plan concise, structured, and practical for a final-year computer engineering project.
+
