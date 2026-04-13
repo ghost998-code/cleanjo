@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Numeric, Enum, Index
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Numeric, Enum, Index, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -15,7 +15,8 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     full_name = Column(String(100))
     role = Column(Enum(UserRole), default=UserRole.CITIZEN)
-    phone = Column(String(20))
+    phone = Column(String(20), unique=True, index=True)
+    admin_preferences = Column(JSON, nullable=False, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     reports = relationship("Report", back_populates="user", foreign_keys="Report.user_id")

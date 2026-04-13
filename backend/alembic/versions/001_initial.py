@@ -20,14 +20,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Create enum types
-    user_role = postgresql.ENUM('citizen', 'inspector', 'admin', name='userrole')
-    user_role.create(op.get_bind())
-    
-    report_status = postgresql.ENUM('pending', 'in_progress', 'resolved', 'rejected', name='reportstatus')
-    report_status.create(op.get_bind())
-    
-    severity = postgresql.ENUM('low', 'medium', 'high', 'critical', name='severity')
-    severity.create(op.get_bind())
+    op.execute("DO $$ BEGIN CREATE TYPE userrole AS ENUM ('citizen', 'inspector', 'admin'); EXCEPTION WHEN duplicate_object THEN null; END $$")
+    op.execute("DO $$ BEGIN CREATE TYPE reportstatus AS ENUM ('pending', 'in_progress', 'resolved', 'rejected'); EXCEPTION WHEN duplicate_object THEN null; END $$")
+    op.execute("DO $$ BEGIN CREATE TYPE severity AS ENUM ('low', 'medium', 'high', 'critical'); EXCEPTION WHEN duplicate_object THEN null; END $$")
     
     # Create users table
     op.create_table(
@@ -36,7 +31,7 @@ def upgrade() -> None:
         sa.Column('email', sa.String(length=255), nullable=False),
         sa.Column('password_hash', sa.String(length=255), nullable=False),
         sa.Column('full_name', sa.String(length=100), nullable=True),
-        sa.Column('role', user_role, nullable=True),
+        sa.Column('role', postgresql.ENUM('citizen', 'inspector', 'admin', name='userrole', create_type=False), nullable=True),
         sa.Column('phone', sa.String(length=20), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint('id')
@@ -52,10 +47,10 @@ def upgrade() -> None:
         sa.Column('longitude', sa.Numeric(precision=11, scale=8), nullable=False),
         sa.Column('address', sa.String(length=500), nullable=True),
         sa.Column('garbage_type', sa.String(length=100), nullable=True),
-        sa.Column('severity', severity, nullable=True),
+        sa.Column('severity', postgresql.ENUM('low', 'medium', 'high', 'critical', name='severity', create_type=False), nullable=True),
         sa.Column('image_url', sa.String(length=500), nullable=True),
         sa.Column('description', sa.Text(), nullable=True),
-        sa.Column('status', report_status, nullable=True),
+        sa.Column('status', postgresql.ENUM('pending', 'in_progress', 'resolved', 'rejected', name='reportstatus', create_type=False), nullable=True),
         sa.Column('assigned_to', sa.UUID(), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=True),
         sa.Column('updated_at', sa.DateTime(), nullable=True),
@@ -72,8 +67,8 @@ def upgrade() -> None:
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('report_id', sa.UUID(), nullable=False),
         sa.Column('changed_by', sa.UUID(), nullable=True),
-        sa.Column('old_status', report_status, nullable=True),
-        sa.Column('new_status', report_status, nullable=False),
+        sa.Column('old_status', postgresql.ENUM('pending', 'in_progress', 'resolved', 'rejected', name='reportstatus', create_type=False), nullable=True),
+        sa.Column('new_status', postgresql.ENUM('pending', 'in_progress', 'resolved', 'rejected', name='reportstatus', create_type=False), nullable=False),
         sa.Column('notes', sa.Text(), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=True),
         sa.ForeignKeyConstraint(['report_id'], ['reports.id'], ),

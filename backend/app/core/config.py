@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     API_V1_PREFIX: str = "/api"
 
+    NODE_ENV: str = "development"
+    VITE_API_URL: str = "http://localhost:8000/api"
+
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/garbage_db"
     REDIS_URL: str = "redis://localhost:6379"
 
@@ -19,6 +22,9 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    OTP_EXPIRE_MINUTES: int = 5
+    OTP_RESEND_COOLDOWN_SECONDS: int = 60
+    OTP_DEV_MODE: bool = True
 
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""

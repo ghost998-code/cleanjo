@@ -1,16 +1,62 @@
 from typing import List, Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select
 
 from app.core.database import get_db
 from app.core.constants import UserRole
-from app.models import User, Report, StatusHistory
-from app.api.schemas.user import UserResponse
+from app.models import User
+from app.api.schemas.user import (
+    UserResponse,
+    AdminPreferences,
+    AdminSettingsResponse,
+    AdminSettingsUpdate,
+)
 from app.api.deps import get_current_user, get_admin_user
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+
+def _merge_admin_preferences(raw_preferences: Optional[dict]) -> AdminPreferences:
+    if not raw_preferences:
+        return AdminPreferences()
+    return AdminPreferences(**raw_preferences)
+
+
+@router.get("/me/settings", response_model=AdminSettingsResponse)
+async def get_admin_settings(current_user: User = Depends(get_admin_user)):
+    return AdminSettingsResponse(
+        full_name=current_user.full_name,
+        email=current_user.email,
+        phone=current_user.phone,
+        role=current_user.role,
+        preferences=_merge_admin_preferences(current_user.admin_preferences),
+    )
+
+
+@router.patch("/me/settings", response_model=AdminSettingsResponse)
+async def update_admin_settings(
+    settings_update: AdminSettingsUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_admin_user),
+):
+    if settings_update.full_name is not None:
+        current_user.full_name = settings_update.full_name.strip() or current_user.full_name
+
+    if settings_update.preferences is not None:
+        current_user.admin_preferences = settings_update.preferences.model_dump()
+
+    await db.commit()
+    await db.refresh(current_user)
+
+    return AdminSettingsResponse(
+        full_name=current_user.full_name,
+        email=current_user.email,
+        phone=current_user.phone,
+        role=current_user.role,
+        preferences=_merge_admin_preferences(current_user.admin_preferences),
+    )
 
 
 @router.get("", response_model=List[UserResponse])
