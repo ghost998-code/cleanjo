@@ -5,9 +5,7 @@ import {
   FileText,
   CheckCircle,
   Clock,
-  XCircle,
   TrendingUp,
-  AlertTriangle,
 } from 'lucide-react'
 import {
   BarChart,

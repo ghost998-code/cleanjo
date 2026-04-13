@@ -3,7 +3,7 @@ import api from '../services/api'
 import { Report, ReportListResponse } from '../types'
 import { format } from 'date-fns'
 import clsx from 'clsx'
-import { MapPin, Clock, Filter, Eye, Check, X, AlertTriangle } from 'lucide-react'
+import { Clock, Filter, Check, X, AlertTriangle } from 'lucide-react'
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-gray-100 text-gray-700',

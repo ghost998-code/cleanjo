@@ -3,7 +3,6 @@ import api from '../services/api'
 import { User } from '../types'
 import { format } from 'date-fns'
 import clsx from 'clsx'
-import { UserPlus, Edit2 } from 'lucide-react'
 
 const ROLE_COLORS: Record<string, string> = {
   admin: 'bg-purple-100 text-purple-700',

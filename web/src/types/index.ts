@@ -7,6 +7,20 @@ export interface User {
   created_at: string
 }
 
+export interface AdminPreferences {
+  notify_on_critical: boolean
+  compact_report_cards: boolean
+  auto_refresh_map: boolean
+}
+
+export interface AdminSettingsResponse {
+  full_name?: string
+  email: string
+  phone?: string
+  role: 'admin' | 'inspector' | 'citizen'
+  preferences: AdminPreferences
+}
+
 export interface Report {
   id: string
   user_id: string

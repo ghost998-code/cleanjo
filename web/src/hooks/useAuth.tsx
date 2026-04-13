@@ -5,8 +5,9 @@ import { User } from '../types'
 interface AuthContextType {
   user: User | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (phone: string, otp: string) => Promise<void>
   logout: () => void
+  updateUser: (updates: Partial<User>) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -30,8 +31,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const login = async (email: string, password: string) => {
-    const response = await api.post('/auth/login', { email, password })
+  const login = async (phone: string, otp: string) => {
+    const response = await api.post('/auth/verify-phone-otp', { phone, otp })
     localStorage.setItem('access_token', response.data.access_token)
     localStorage.setItem('refresh_token', response.data.refresh_token)
     
@@ -45,8 +46,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
+  const updateUser = (updates: Partial<User>) => {
+    setUser((currentUser) => {
+      if (!currentUser) return currentUser
+      return { ...currentUser, ...updates }
+    })
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   )
