@@ -1,6 +1,16 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Numeric, Enum, Index, JSON
+from sqlalchemy import (
+    Column,
+    String,
+    DateTime,
+    ForeignKey,
+    Text,
+    Numeric,
+    Enum,
+    Index,
+    JSON,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -14,13 +24,25 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     full_name = Column(String(100))
-    role = Column(Enum(UserRole), default=UserRole.CITIZEN)
+    role = Column(
+        Enum(
+            UserRole,
+            name="userrole",
+            native_enum=True,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        default=UserRole.CITIZEN,
+    )
     phone = Column(String(20), unique=True, index=True)
     admin_preferences = Column(JSON, nullable=False, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    reports = relationship("Report", back_populates="user", foreign_keys="Report.user_id")
-    assigned_reports = relationship("Report", back_populates="assignee", foreign_keys="Report.assigned_to")
+    reports = relationship(
+        "Report", back_populates="user", foreign_keys="Report.user_id"
+    )
+    assigned_reports = relationship(
+        "Report", back_populates="assignee", foreign_keys="Report.assigned_to"
+    )
     status_changes = relationship("StatusHistory", back_populates="changed_by_user")
 
 
@@ -42,8 +64,12 @@ class Report(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="reports", foreign_keys=[user_id])
-    assignee = relationship("User", back_populates="assigned_reports", foreign_keys=[assigned_to])
-    status_history = relationship("StatusHistory", back_populates="report", order_by="StatusHistory.created_at")
+    assignee = relationship(
+        "User", back_populates="assigned_reports", foreign_keys=[assigned_to]
+    )
+    status_history = relationship(
+        "StatusHistory", back_populates="report", order_by="StatusHistory.created_at"
+    )
 
     __table_args__ = (
         Index("idx_reports_status", "status"),

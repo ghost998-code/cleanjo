@@ -92,20 +92,21 @@ Once the backend is running, visit:
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
-## Default Admin User
+## Admin Account CLI
 
-Create an admin user via the API:
+Create or update an admin user from the backend directory:
 
 ```bash
-curl -X POST http://localhost:8000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@example.com",
-    "password": "admin123",
-    "full_name": "Admin User",
-    "role": "admin"
-  }'
+python -m app.cli create-admin \
+  --phone "+962790000000" \
+  --full-name "Admin User" \
+  --email "admin@example.com" \
+  --password "admin123"
 ```
+
+You can also omit flags and the CLI will prompt for them interactively.
+
+The web dashboard currently signs in through the OTP flow on `/login`, so use the admin phone number you created in the CLI to access the admin dashboard.
 
 ## Features
 
