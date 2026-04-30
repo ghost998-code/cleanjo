@@ -6,9 +6,10 @@ import clsx from 'clsx'
 import { Clock, Filter, Check, X, AlertTriangle } from 'lucide-react'
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-gray-100 text-gray-700',
-  in_progress: 'bg-blue-100 text-blue-700',
-  resolved: 'bg-green-100 text-green-700',
+  submitted: 'bg-slate-100 text-slate-700',
+  under_review: 'bg-blue-100 text-blue-700',
+  scheduled: 'bg-amber-100 text-amber-700',
+  cleaned: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
 }
 
@@ -95,9 +96,10 @@ export default function ReportsPage() {
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
             <option value="">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="in_progress">In Progress</option>
-            <option value="resolved">Resolved</option>
+            <option value="submitted">Submitted</option>
+            <option value="under_review">Under Review</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="cleaned">Cleaned</option>
             <option value="rejected">Rejected</option>
           </select>
           <select
@@ -167,7 +169,7 @@ export default function ReportsPage() {
                       {report.id.slice(0, 8)}...
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                      {report.garbage_type || '-'}
+                      {report.category || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
@@ -262,7 +264,7 @@ export default function ReportsPage() {
 
               <div>
                 <p className="text-sm text-gray-500">Type</p>
-                <p className="font-medium">{selectedReport.garbage_type || '-'}</p>
+                <p className="font-medium">{selectedReport.category || '-'}</p>
               </div>
 
               <div>
@@ -298,16 +300,22 @@ export default function ReportsPage() {
                 <p className="text-sm font-medium text-gray-700 mb-3">Update Status</p>
                 <div className="flex flex-wrap gap-2">
                   <button
-                    onClick={() => updateStatus(selectedReport.id, 'in_progress')}
+                    onClick={() => updateStatus(selectedReport.id, 'under_review')}
                     className="flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200"
                   >
-                    <Clock className="w-4 h-4" /> In Progress
+                    <Clock className="w-4 h-4" /> Under Review
                   </button>
                   <button
-                    onClick={() => updateStatus(selectedReport.id, 'resolved')}
+                    onClick={() => updateStatus(selectedReport.id, 'scheduled')}
+                    className="flex items-center gap-2 px-3 py-2 bg-amber-100 text-amber-700 rounded-lg text-sm hover:bg-amber-200"
+                  >
+                    <Check className="w-4 h-4" /> Schedule
+                  </button>
+                  <button
+                    onClick={() => updateStatus(selectedReport.id, 'cleaned')}
                     className="flex items-center gap-2 px-3 py-2 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200"
                   >
-                    <Check className="w-4 h-4" /> Resolved
+                    <Check className="w-4 h-4" /> Mark Cleaned
                   </button>
                   <button
                     onClick={() => updateStatus(selectedReport.id, 'rejected')}

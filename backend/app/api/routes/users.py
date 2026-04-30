@@ -12,8 +12,10 @@ from app.api.schemas.user import (
     AdminPreferences,
     AdminSettingsResponse,
     AdminSettingsUpdate,
+    UserRoleUpdate,
 )
 from app.api.deps import get_current_user, get_admin_user
+from app.services.audit import log_audit
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -95,7 +97,7 @@ async def get_user(
 @router.patch("/{user_id}/role")
 async def update_user_role(
     user_id: UUID,
-    role: UserRole,
+    role_update: UserRoleUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_admin_user),
 ):
@@ -105,7 +107,13 @@ async def update_user_role(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    user.role = role
+    user.role = role_update.role
+    await log_audit(
+        db,
+        action="user.role_updated",
+        user_id=current_user.id,
+        details={"target_user_id": str(user.id), "role": role_update.role.value},
+    )
     await db.commit()
     
     return {"message": "Role updated successfully"}

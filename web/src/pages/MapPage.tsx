@@ -99,9 +99,10 @@ export default function MapPage() {
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
           >
             <option value="">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="in_progress">In Progress</option>
-            <option value="resolved">Resolved</option>
+            <option value="submitted">Submitted</option>
+            <option value="under_review">Under Review</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="cleaned">Cleaned</option>
             <option value="rejected">Rejected</option>
           </select>
           <button
@@ -150,7 +151,7 @@ export default function MapPage() {
                     >
                       <Popup>
                         <div className="text-sm">
-                          <p className="font-bold">{feature.properties.garbage_type || 'Unknown'}</p>
+                          <p className="font-bold">{feature.properties.category || 'Unknown'}</p>
                           <p>Status: {feature.properties.status}</p>
                           <p>Severity: {feature.properties.severity}</p>
                         </div>

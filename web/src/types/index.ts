@@ -27,12 +27,21 @@ export interface Report {
   latitude: number
   longitude: number
   address?: string
-  garbage_type?: string
+  locality?: string
+  category: 'household' | 'construction' | 'green' | 'hazardous' | 'electronic' | 'bulky' | 'mixed' | 'other'
   severity: 'low' | 'medium' | 'high' | 'critical'
   image_url?: string
+  video_url?: string
   description?: string
-  status: 'pending' | 'in_progress' | 'resolved' | 'rejected'
+  gps_accuracy?: number
+  reported_at?: string
+  terrain: 'street' | 'sidewalk' | 'open_lot' | 'waterway' | 'residential' | 'industrial' | 'other'
+  reachability: 'easy' | 'moderate' | 'hard' | 'requires_special_equipment'
+  density: 'sparse' | 'moderate' | 'dense' | 'illegal_dump'
+  amount_estimate: '1_bag' | '2_5_bags' | '6_15_bags' | 'truckload'
+  status: 'submitted' | 'under_review' | 'scheduled' | 'cleaned' | 'rejected'
   assigned_to?: string
+  admin_notes?: string
   created_at: string
   updated_at: string
 }
@@ -55,7 +64,7 @@ export interface GeoJSONFeature {
     id: string
     status: string
     severity: string
-    garbage_type?: string
+    category?: string
     created_at: string
   }
 }

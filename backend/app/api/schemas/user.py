@@ -1,21 +1,27 @@
 from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
-from pydantic import BaseModel, EmailStr, Field
-from app.core.constants import UserRole, ReportStatus, Severity
+from pydantic import BaseModel, EmailStr, Field, model_validator
+from app.core.constants import UserRole
 
 
 class UserBase(BaseModel):
-    email: EmailStr
+    email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     phone: Optional[str] = None
 
 
-class UserCreate(UserBase):
+class RegisterRequest(UserBase):
     password: str = Field(..., min_length=6)
-    phone: str = Field(..., min_length=10, max_length=20)
-    otp: str = Field(..., min_length=6, max_length=6)
+    phone: Optional[str] = Field(None, min_length=10, max_length=20)
+    otp: Optional[str] = Field(None, min_length=6, max_length=6)
     role: UserRole = UserRole.CITIZEN
+
+    @model_validator(mode="after")
+    def validate_identity(self):
+        if not self.email and not self.phone:
+            raise ValueError("Email or phone is required")
+        return self
 
 
 class UserUpdate(BaseModel):
@@ -46,6 +52,7 @@ class UserResponse(UserBase):
     id: UUID
     role: UserRole
     created_at: datetime
+    last_login: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -64,8 +71,16 @@ class TokenPayload(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    identifier: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
     password: str
+
+    @model_validator(mode="after")
+    def validate_identifier(self):
+        if not any([self.identifier, self.email, self.phone]):
+            raise ValueError("identifier, email, or phone is required")
+        return self
 
 
 class OTPRequest(BaseModel):
@@ -81,3 +96,11 @@ class OTPResponse(BaseModel):
 class PhoneOTPVerifyRequest(BaseModel):
     phone: str = Field(..., min_length=10, max_length=20)
     otp: str = Field(..., min_length=6, max_length=6)
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+class UserRoleUpdate(BaseModel):
+    role: UserRole

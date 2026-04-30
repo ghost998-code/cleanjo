@@ -1,13 +1,32 @@
 import secrets
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.core.database import get_db
-from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_token
-from app.core.constants import UserRole
-from app.models import User
-from app.api.schemas.user import UserCreate, UserResponse, Token, LoginRequest, OTPRequest, OTPResponse, PhoneOTPVerifyRequest
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.deps import get_current_user
+from app.api.schemas.user import (
+    LoginRequest,
+    OTPRequest,
+    OTPResponse,
+    PhoneOTPVerifyRequest,
+    RefreshTokenRequest,
+    RegisterRequest,
+    Token,
+    UserResponse,
+)
+from app.core.database import get_db
+from app.core.constants import UserRole
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    get_password_hash,
+    verify_password,
+)
+from app.models import User
+from app.services.audit import log_audit
 from app.services.otp import normalize_phone, otp_service
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -44,33 +63,43 @@ async def request_phone_otp(otp_request: OTPRequest):
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
-    normalized_phone = normalize_phone(user_data.phone)
+async def register(user_data: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    normalized_phone = normalize_phone(user_data.phone) if user_data.phone else None
 
-    result = await db.execute(select(User).where(User.email == user_data.email))
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
-        )
+    if user_data.email:
+        result = await db.execute(select(User).where(User.email == user_data.email))
+        if result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered",
+            )
 
-    result = await db.execute(select(User).where(User.phone == normalized_phone))
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Phone number already registered",
-        )
+    if normalized_phone:
+        result = await db.execute(select(User).where(User.phone == normalized_phone))
+        if result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Phone number already registered",
+            )
 
-    otp_service.verify(normalized_phone, user_data.otp)
+    if normalized_phone:
+        if not user_data.otp:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="OTP is required for phone registration",
+            )
+        otp_service.verify(normalized_phone, user_data.otp)
 
     user = User(
-        email=user_data.email,
+        email=user_data.email or build_phone_email(normalized_phone),
         password_hash=get_password_hash(user_data.password),
         full_name=user_data.full_name,
         phone=normalized_phone,
         role=user_data.role,
     )
     db.add(user)
+    await db.flush()
+    await log_audit(db, action="auth.register", user_id=user.id, details={"role": user.role.value})
     await db.commit()
     await db.refresh(user)
     return user
@@ -97,55 +126,71 @@ async def verify_phone_otp(phone_data: PhoneOTPVerifyRequest, db: AsyncSession =
         await db.refresh(user)
     elif not user.full_name:
         user.full_name = build_default_name(normalized_phone)
-        await db.commit()
-        await db.refresh(user)
 
+    user.last_login = datetime.utcnow()
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
+
+    await log_audit(db, action="auth.phone_otp_login", user_id=user.id)
+    await db.commit()
 
     return Token(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/login", response_model=Token)
 async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == login_data.email))
+    identifier = login_data.identifier or login_data.email or login_data.phone
+    normalized_phone = None
+    if login_data.phone:
+        normalized_phone = normalize_phone(login_data.phone)
+    elif identifier and "@" not in identifier:
+        normalized_phone = normalize_phone(identifier)
+
+    if normalized_phone:
+        result = await db.execute(select(User).where(User.phone == normalized_phone))
+    else:
+        result = await db.execute(select(User).where(User.email == identifier))
     user = result.scalar_one_or_none()
     
     if not user or not verify_password(login_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
+            detail="Invalid credentials",
         )
-    
+
+    user.last_login = datetime.utcnow()
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
-    
+
+    await log_audit(db, action="auth.login", user_id=user.id)
+    await db.commit()
+
     return Token(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/refresh", response_model=Token)
-async def refresh_token(refresh_token: str, db: AsyncSession = Depends(get_db)):
-    payload = decode_token(refresh_token)
-    
+async def refresh_token(refresh_request: RefreshTokenRequest, db: AsyncSession = Depends(get_db)):
+    payload = decode_token(refresh_request.refresh_token)
+
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token",
         )
-    
+
     user_id = payload.get("sub")
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
-    
+
     new_access_token = create_access_token(data={"sub": str(user.id)})
     new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
-    
+
     return Token(access_token=new_access_token, refresh_token=new_refresh_token)
 
 

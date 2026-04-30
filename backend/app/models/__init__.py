@@ -1,3 +1,3 @@
-from app.models.models import User, Report, StatusHistory
+from app.models.models import AuditLog, Feedback, Report, StatusHistory, User
 
-__all__ = ["User", "Report", "StatusHistory"]
+__all__ = ["User", "Report", "StatusHistory", "Feedback", "AuditLog"]

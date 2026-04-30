@@ -41,7 +41,7 @@ class _InspectorDashboardPageState extends State<InspectorDashboardPage>
         'page_size': 50,
       });
       final allResponse = await apiClient.get('/reports', queryParameters: {
-        'status': 'pending',
+        'status': 'submitted',
         'page_size': 50,
       });
       
@@ -291,7 +291,7 @@ class _InspectorReportCard extends StatelessWidget {
                 ],
               ],
             ),
-            if (showActions && report['status'] == 'pending') ...[
+            if (showActions && report['status'] == 'submitted') ...[
               const SizedBox(height: 12),
               const Divider(),
               const SizedBox(height: 8),
@@ -299,14 +299,14 @@ class _InspectorReportCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   TextButton.icon(
-                    onPressed: () => _showUpdateDialog(context, 'in_progress'),
+                    onPressed: () => _showUpdateDialog(context, 'under_review'),
                     icon: const Icon(Icons.play_arrow),
-                    label: const Text('Start'),
+                    label: const Text('Review'),
                   ),
                   TextButton.icon(
-                    onPressed: () => _showUpdateDialog(context, 'resolved'),
+                    onPressed: () => _showUpdateDialog(context, 'cleaned'),
                     icon: const Icon(Icons.check, color: Colors.green),
-                    label: const Text('Resolve', style: TextStyle(color: Colors.green)),
+                    label: const Text('Cleaned', style: TextStyle(color: Colors.green)),
                   ),
                   TextButton.icon(
                     onPressed: () => _showUpdateDialog(context, 'rejected'),

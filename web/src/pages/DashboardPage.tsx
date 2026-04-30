@@ -21,9 +21,10 @@ import {
 } from 'recharts'
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: '#9CA3AF',
-  in_progress: '#3B82F6',
-  resolved: '#22C55E',
+  submitted: '#94A3B8',
+  under_review: '#3B82F6',
+  scheduled: '#F59E0B',
+  cleaned: '#22C55E',
   rejected: '#EF4444',
 }
 
@@ -90,20 +91,20 @@ export default function DashboardPage() {
           color="blue"
         />
         <StatCard
-          title="Pending"
-          value={analytics?.by_status?.pending || 0}
+          title="Submitted"
+          value={analytics?.by_status?.submitted || 0}
           icon={Clock}
           color="gray"
         />
         <StatCard
-          title="In Progress"
-          value={analytics?.by_status?.in_progress || 0}
+          title="Under Review"
+          value={analytics?.by_status?.under_review || 0}
           icon={TrendingUp}
           color="yellow"
         />
         <StatCard
-          title="Resolved"
-          value={analytics?.by_status?.resolved || 0}
+          title="Cleaned"
+          value={analytics?.by_status?.cleaned || 0}
           icon={CheckCircle}
           color="green"
         />

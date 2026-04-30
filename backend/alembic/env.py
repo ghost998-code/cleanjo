@@ -8,7 +8,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.database import Base
-from app.models import User, Report, StatusHistory
+from app.models import AuditLog, Feedback, Report, StatusHistory, User
 
 config = context.config
 

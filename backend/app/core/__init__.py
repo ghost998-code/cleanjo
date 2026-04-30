@@ -7,7 +7,16 @@ from app.core.security import (
     create_refresh_token,
     decode_token,
 )
-from app.core.constants import UserRole, ReportStatus, Severity, GARBAGE_TYPES
+from app.core.constants import (
+    AmountEstimate,
+    DensityType,
+    ReachabilityType,
+    ReportCategory,
+    ReportStatus,
+    Severity,
+    TerrainType,
+    UserRole,
+)
 
 __all__ = [
     "settings",
@@ -23,5 +32,9 @@ __all__ = [
     "UserRole",
     "ReportStatus",
     "Severity",
-    "GARBAGE_TYPES",
+    "ReportCategory",
+    "TerrainType",
+    "ReachabilityType",
+    "DensityType",
+    "AmountEstimate",
 ]

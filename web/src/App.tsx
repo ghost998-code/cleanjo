@@ -1,10 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
+import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import ReportsPage from './pages/ReportsPage'
 import MapPage from './pages/MapPage'
 import SettingsPage from './pages/SettingsPage'
+import UsersPage from './pages/UsersPage'
 import Layout from './components/Layout'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -19,7 +21,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
   
   if (!user) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/admin/login" replace />
   }
   
   return <>{children}</>
@@ -48,7 +50,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
               Sign out
             </button>
             <a
-              href="/login"
+              href="/admin/login"
               className="rounded-xl border border-white/15 px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/10"
             >
               Back to login
@@ -67,9 +69,10 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/" element={<HomePage />} />
+          <Route path="/admin/login" element={<LoginPage />} />
           <Route
-            path="/"
+            path="/admin"
             element={
               <ProtectedRoute>
                 <AdminRoute>
@@ -81,6 +84,7 @@ function App() {
             <Route index element={<DashboardPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="map" element={<MapPage />} />
+            <Route path="users" element={<UsersPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

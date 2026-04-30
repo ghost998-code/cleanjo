@@ -11,14 +11,16 @@ import {
   Menu,
   X,
   ShieldCheck,
+  Users,
 } from 'lucide-react'
 import clsx from 'clsx'
 
 const navItems = [
-  { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/reports', icon: FileText, label: 'Reports' },
-  { path: '/map', icon: Map, label: 'Map' },
-  { path: '/settings', icon: Settings, label: 'Settings' },
+  { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+  { path: '/admin/reports', icon: FileText, label: 'Reports' },
+  { path: '/admin/map', icon: Map, label: 'Map' },
+  { path: '/admin/users', icon: Users, label: 'Users' },
+  { path: '/admin/settings', icon: Settings, label: 'Settings' },
 ]
 
 export default function Layout() {
@@ -85,8 +87,8 @@ export default function Layout() {
         <nav className="flex-1 space-y-1 p-4">
           {navItems.map((item) => {
             const Icon = item.icon
-            const isActive = item.path === '/'
-              ? location.pathname === '/'
+            const isActive = item.path === '/admin'
+              ? location.pathname === '/admin'
               : location.pathname.startsWith(item.path)
             
             return (

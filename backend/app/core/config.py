@@ -5,10 +5,11 @@ from functools import lru_cache
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Garbage Detection API"
     VERSION: str = "1.0.0"
-    API_V1_PREFIX: str = "/api"
+    API_V1_PREFIX: str = "/api/v1"
+    LEGACY_API_PREFIX: str = "/api"
 
     NODE_ENV: str = "development"
-    VITE_API_URL: str = "http://localhost:8000/api"
+    VITE_API_URL: str = "http://localhost:8000/api/v1"
 
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/garbage_db"
     REDIS_URL: str = "redis://localhost:6379"
@@ -20,11 +21,17 @@ class Settings(BaseSettings):
 
     JWT_SECRET_KEY: str = "your-secret-key-change-in-production"
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     OTP_EXPIRE_MINUTES: int = 5
     OTP_RESEND_COOLDOWN_SECONDS: int = 60
     OTP_DEV_MODE: bool = True
+
+    MAX_IMAGE_UPLOAD_BYTES: int = 5 * 1024 * 1024
+    MAX_VIDEO_UPLOAD_BYTES: int = 20 * 1024 * 1024
+    MAX_DESCRIPTION_LENGTH: int = 500
+    GPS_WARNING_ACCURACY_METERS: float = 20.0
+    GPS_MAX_ACCURACY_METERS: float = 50.0
 
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""

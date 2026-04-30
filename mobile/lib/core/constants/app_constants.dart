@@ -22,9 +22,10 @@ class AppConstants {
   };
 
   static const Map<String, String> statusLabels = {
-    'pending': 'Pending',
-    'in_progress': 'In Progress',
-    'resolved': 'Resolved',
+    'submitted': 'Submitted',
+    'under_review': 'Under Review',
+    'scheduled': 'Scheduled',
+    'cleaned': 'Cleaned',
     'rejected': 'Rejected',
   };
 
@@ -36,9 +37,10 @@ class AppConstants {
   };
 
   static const Map<String, int> statusColors = {
-    'pending': 0xFF9E9E9E,
-    'in_progress': 0xFF2196F3,
-    'resolved': 0xFF4CAF50,
+    'submitted': 0xFF94A3B8,
+    'under_review': 0xFF2196F3,
+    'scheduled': 0xFFFF9800,
+    'cleaned': 0xFF4CAF50,
     'rejected': 0xFFF44336,
   };
 }

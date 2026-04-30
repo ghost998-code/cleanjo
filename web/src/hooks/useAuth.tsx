@@ -5,7 +5,9 @@ import { User } from '../types'
 interface AuthContextType {
   user: User | null
   loading: boolean
-  login: (phone: string, otp: string) => Promise<void>
+  loginWithPassword: (identifier: string, password: string) => Promise<User>
+  requestOtp: (phone: string) => Promise<{ otp?: string; message: string }>
+  loginWithOtp: (phone: string, otp: string) => Promise<User>
   logout: () => void
   updateUser: (updates: Partial<User>) => void
 }
@@ -31,13 +33,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const login = async (phone: string, otp: string) => {
-    const response = await api.post('/auth/verify-phone-otp', { phone, otp })
+  const loginWithPassword = async (identifier: string, password: string) => {
+    const response = await api.post('/auth/login', { identifier, password })
     localStorage.setItem('access_token', response.data.access_token)
     localStorage.setItem('refresh_token', response.data.refresh_token)
     
     const userResponse = await api.get('/auth/me')
     setUser(userResponse.data)
+    return userResponse.data
+  }
+
+  const requestOtp = async (phone: string) => {
+    const response = await api.post('/auth/request-phone-otp', { phone })
+    return response.data
+  }
+
+  const loginWithOtp = async (phone: string, otp: string) => {
+    const response = await api.post('/auth/verify-phone-otp', { phone, otp })
+    localStorage.setItem('access_token', response.data.access_token)
+    localStorage.setItem('refresh_token', response.data.refresh_token)
+
+    const userResponse = await api.get('/auth/me')
+    setUser(userResponse.data)
+    return userResponse.data
   }
 
   const logout = () => {
@@ -54,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, loginWithPassword, requestOtp, loginWithOtp, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   )
