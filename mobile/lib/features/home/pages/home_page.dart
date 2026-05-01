@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../core/auth/auth_bloc.dart';
-import '../citizen/pages/my_reports_page.dart';
-import '../map/pages/map_page.dart';
-import '../inspector/pages/inspector_dashboard_page.dart';
-import '../profile/pages/profile_page.dart';
+import '../../../core/auth/auth_bloc.dart';
+import '../../../core/auth/auth_models.dart';
+import '../../citizen/pages/my_reports_page.dart';
+import '../../map/pages/map_page.dart';
+import '../../inspector/pages/inspector_dashboard_page.dart';
+import '../../profile/pages/profile_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});

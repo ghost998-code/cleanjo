@@ -49,6 +49,7 @@ dist/
 .packages
 .pub/
 build/
+local.properties
 
 # Downloaded archives
 *.tar

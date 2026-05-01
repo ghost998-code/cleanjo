@@ -5,6 +5,7 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.api import api_router
 from app.services.kafka import kafka_service
+from app.services.otp import otp_service
 
 
 @asynccontextmanager
@@ -15,6 +16,7 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
     yield
+    await otp_service.close()
     await kafka_service.stop_producer()
 
 

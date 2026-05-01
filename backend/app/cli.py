@@ -14,7 +14,7 @@ from app.services.otp import normalize_phone
 
 def build_phone_email(phone: str) -> str:
     digits = "".join(char for char in phone if char.isdigit())
-    return f"admin-{digits}@phone.cleanjo.local"
+    return f"admin-{digits}@example.com"
 
 
 def build_default_name(phone: str) -> str:

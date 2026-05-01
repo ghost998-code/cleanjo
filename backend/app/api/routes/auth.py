@@ -32,6 +32,9 @@ from app.services.otp import normalize_phone, otp_service
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
+PLACEHOLDER_EMAIL_DOMAIN = "example.com"
+
+
 def build_default_name(phone: str) -> str:
     digits = "".join(char for char in phone if char.isdigit())
     return f"User {digits[-4:] or '0000'}"
@@ -39,7 +42,11 @@ def build_default_name(phone: str) -> str:
 
 def build_phone_email(phone: str) -> str:
     digits = "".join(char for char in phone if char.isdigit())
-    return f"user-{digits}@phone.cleanjo.local"
+    return f"user-{digits}@{PLACEHOLDER_EMAIL_DOMAIN}"
+
+
+def should_refresh_placeholder_email(email: str | None) -> bool:
+    return bool(email and email.endswith("@phone.cleanjo.local"))
 
 
 @router.post("/request-registration-otp", response_model=OTPResponse)
@@ -53,13 +60,13 @@ async def request_registration_otp(otp_request: OTPRequest, db: AsyncSession = D
             detail="Phone number already registered",
         )
 
-    return otp_service.generate(normalized_phone)
+    return await otp_service.generate(normalized_phone)
 
 
 @router.post("/request-phone-otp", response_model=OTPResponse)
 async def request_phone_otp(otp_request: OTPRequest):
     normalized_phone = normalize_phone(otp_request.phone)
-    return otp_service.generate(normalized_phone)
+    return await otp_service.generate(normalized_phone)
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -88,7 +95,7 @@ async def register(user_data: RegisterRequest, db: AsyncSession = Depends(get_db
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="OTP is required for phone registration",
             )
-        otp_service.verify(normalized_phone, user_data.otp)
+        await otp_service.verify(normalized_phone, user_data.otp)
 
     user = User(
         email=user_data.email or build_phone_email(normalized_phone),
@@ -108,7 +115,7 @@ async def register(user_data: RegisterRequest, db: AsyncSession = Depends(get_db
 @router.post("/verify-phone-otp", response_model=Token)
 async def verify_phone_otp(phone_data: PhoneOTPVerifyRequest, db: AsyncSession = Depends(get_db)):
     normalized_phone = normalize_phone(phone_data.phone)
-    otp_service.verify(normalized_phone, phone_data.otp)
+    await otp_service.verify(normalized_phone, phone_data.otp)
 
     result = await db.execute(select(User).where(User.phone == normalized_phone))
     user = result.scalar_one_or_none()
@@ -124,8 +131,11 @@ async def verify_phone_otp(phone_data: PhoneOTPVerifyRequest, db: AsyncSession =
         db.add(user)
         await db.commit()
         await db.refresh(user)
-    elif not user.full_name:
-        user.full_name = build_default_name(normalized_phone)
+    else:
+        if not user.full_name:
+            user.full_name = build_default_name(normalized_phone)
+        if should_refresh_placeholder_email(user.email):
+            user.email = build_phone_email(normalized_phone)
 
     user.last_login = datetime.utcnow()
     access_token = create_access_token(data={"sub": str(user.id)})
@@ -157,6 +167,9 @@ async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
+
+    if normalized_phone and should_refresh_placeholder_email(user.email):
+        user.email = build_phone_email(normalized_phone)
 
     user.last_login = datetime.utcnow()
     access_token = create_access_token(data={"sub": str(user.id)})

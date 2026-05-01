@@ -60,6 +60,18 @@ uvicorn app.main:app --reload
 
 API will be available at `http://localhost:8000`
 
+To test from a physical phone on the same Wi-Fi network, bind the backend to all interfaces instead:
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Then run the mobile app with your computer's LAN IP passed to Flutter:
+
+```bash
+flutter run --dart-define=CLEANJO_API_BASE_URL=http://YOUR_LAN_IP:8000/api/v1
+```
+
 ### 3. Web Dashboard Setup
 
 ```bash
@@ -84,6 +96,15 @@ flutter pub get
 
 # Run on device/emulator
 flutter run
+
+# Run on a physical phone on the same network
+flutter run --dart-define=CLEANJO_API_BASE_URL=http://YOUR_LAN_IP:8000/api/v1
+```
+
+For the Android Google Map view, add your Google Maps API key to `mobile/android/local.properties`:
+
+```properties
+MAPS_API_KEY=your_android_google_maps_api_key
 ```
 
 ## API Documentation
@@ -106,12 +127,12 @@ python -m app.cli create-admin \
 
 You can also omit flags and the CLI will prompt for them interactively.
 
-The web dashboard currently signs in through the OTP flow on `/login`, so use the admin phone number you created in the CLI to access the admin dashboard.
+The web dashboard is admin-only and uses password login on `/admin/login`. Citizen registration and sign-in happen in the mobile app with phone number OTP verification.
 
 ## Features
 
 ### Mobile App
-- User authentication (citizen/inspector roles)
+- Phone number registration and sign-in with OTP verification
 - GPS-based garbage reporting with photo upload
 - Offline queue with automatic sync
 - Interactive map with marker clustering
@@ -119,6 +140,7 @@ The web dashboard currently signs in through the OTP flow on `/login`, so use th
 - Role-based UI (citizen vs inspector views)
 
 ### Web Dashboard
+- Admin-only access for statistics and operational oversight
 - Dashboard with analytics charts
 - Reports management (filter, view, update status)
 - User management (change roles)

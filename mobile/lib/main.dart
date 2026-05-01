@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/di/injection.dart';
-import 'core/network/api_client.dart';
 import 'core/auth/auth_bloc.dart';
 import 'features/home/pages/home_page.dart';
 import 'features/auth/pages/login_page.dart';
-import 'features/auth/pages/register_page.dart';
 import 'features/citizen/pages/create_report_page.dart';
 import 'features/inspector/pages/inspector_dashboard_page.dart';
 import 'features/map/pages/map_page.dart';
@@ -35,7 +33,6 @@ class GarbageDetectionApp extends StatelessWidget {
         routes: {
           '/': (context) => const AuthWrapper(),
           '/login': (context) => const LoginPage(),
-          '/register': (context) => const RegisterPage(),
           '/home': (context) => const HomePage(),
           '/create-report': (context) => const CreateReportPage(),
           '/map': (context) => const MapPage(),

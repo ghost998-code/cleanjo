@@ -1,36 +1,26 @@
 import '../network/api_client.dart';
 import '../network/api_endpoints.dart';
-import 'auth_state.dart';
+import 'auth_models.dart';
 
 class AuthRepository {
   final ApiClient _apiClient;
 
   AuthRepository(this._apiClient);
 
-  Future<Map<String, dynamic>> login(String email, String password) async {
+  Future<Map<String, dynamic>> requestOtp(String phone) async {
     final response = await _apiClient.post(
-      ApiEndpoints.login,
-      data: {'email': email, 'password': password},
+      ApiEndpoints.requestPhoneOtp,
+      data: {'phone': phone},
     );
-    return response.data;
+    return Map<String, dynamic>.from(response.data as Map);
   }
 
-  Future<UserModel> register({
-    required String email,
-    required String password,
-    required String fullName,
-    required String role,
-  }) async {
+  Future<Map<String, dynamic>> loginWithOtp(String phone, String otp) async {
     final response = await _apiClient.post(
-      ApiEndpoints.register,
-      data: {
-        'email': email,
-        'password': password,
-        'full_name': fullName,
-        'role': role,
-      },
+      ApiEndpoints.verifyPhoneOtp,
+      data: {'phone': phone, 'otp': otp},
     );
-    return UserModel.fromJson(response.data);
+    return Map<String, dynamic>.from(response.data as Map);
   }
 
   Future<UserModel> getCurrentUser() async {

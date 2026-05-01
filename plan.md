@@ -30,10 +30,10 @@ Below is a staged plan focused only on what is still missing relative to your sp
 8. Add deletion/privacy flows.
    User delete-account request and cascading/anonymized cleanup policy.
 3. Authentication and Identity
-1. Implement registration with email or phone + OTP verification.
-   Current backend partially supports phone OTP and email/password, but not the spec’s unified flow.
-2. Implement login with email or phone + password.
-   Current mobile uses email/password; web uses phone OTP; these need one shared contract.
+1. Make mobile authentication phone-number-only with OTP verification.
+   First-time verification should create the citizen account; no email/password flow should be exposed in the mobile client.
+2. Keep web authentication admin-only with password login.
+   OTP sign-in must not exist in the web portal because the web surface is for administration, statistics, and report operations only.
 3. Implement password reset.
    Missing entirely.
 4. Store JWT/refresh token policy per spec.
@@ -79,10 +79,9 @@ Below is a staged plan focused only on what is still missing relative to your sp
 6. Add analytics endpoints.
    Heatmap/density clusters, reports per area, average response time, priority zones.
 7. Mobile App
-1. Replace current auth UX with spec-compliant flow.
-   Registration: email or phone + OTP.
-   Login: email/phone + password.
-   Password reset.
+1. Replace current auth UX with the required phone OTP flow.
+   Registration and sign-in should both start from the phone number; OTP verification completes access.
+   Remove email/password and separate register screens from the mobile UX.
 2. Fix auth persistence.
    Current token/session restore is incomplete.
 3. Rework home flow to match spec exactly.
@@ -110,8 +109,8 @@ Below is a staged plan focused only on what is still missing relative to your sp
 10. Add role-based inspector features.
    Status updates, field notes, assigned reports.
 8. Web Dashboard
-1. Standardize login flow to email/password.
-   Optional 2FA can be phase 2.
+1. Keep the web portal focused on administrator login and oversight.
+   No citizen OTP sign-in should be available on the web. Optional 2FA can be phase 2.
 2. Add missing admin route coverage.
    Users page exists but is not routed.
 3. Replace Leaflet/OpenStreetMap with Google Maps if you want strict spec compliance.

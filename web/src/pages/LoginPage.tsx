@@ -39,7 +39,7 @@ export default function LoginPage() {
           CleanJO Admin
         </h1>
         <p className="text-center text-gray-500 mb-8">
-          Sign in with your administrator email or phone number and password.
+          Sign in with your administrator email or phone number and password. Citizen OTP access is available only in the mobile app.
         </p>
 
         {error && (
@@ -100,11 +100,11 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 text-center text-sm text-gray-500">
-          Citizen OTP access is available on the homepage.
+          The web portal is for administrators only.
         </p>
         <p className="mt-2 text-center text-sm text-gray-500">
           <Link to="/" className="font-medium text-primary-600 hover:text-primary-700">
-            Go to citizen homepage
+            Back to portal overview
           </Link>
         </p>
       </div>

@@ -22,7 +22,20 @@ class AuthAuthenticated extends AuthState {
 
 class AuthUnauthenticated extends AuthState {}
 
-class AuthRegistrationSuccess extends AuthState {}
+class AuthOtpRequested extends AuthState {
+  final String phone;
+  final String message;
+  final String? devOtp;
+
+  const AuthOtpRequested({
+    required this.phone,
+    required this.message,
+    this.devOtp,
+  });
+
+  @override
+  List<Object?> get props => [phone, message, devOtp];
+}
 
 class AuthError extends AuthState {
   final String message;
@@ -31,34 +44,4 @@ class AuthError extends AuthState {
 
   @override
   List<Object?> get props => [message];
-}
-
-class UserModel {
-  final String id;
-  final String email;
-  final String? fullName;
-  final String role;
-  final DateTime createdAt;
-
-  UserModel({
-    required this.id,
-    required this.email,
-    this.fullName,
-    required this.role,
-    required this.createdAt,
-  });
-
-  factory UserModel.fromJson(Map<String, dynamic> json) {
-    return UserModel(
-      id: json['id'],
-      email: json['email'],
-      fullName: json['full_name'],
-      role: json['role'],
-      createdAt: DateTime.parse(json['created_at']),
-    );
-  }
-
-  bool get isAdmin => role == 'admin';
-  bool get isInspector => role == 'inspector';
-  bool get isCitizen => role == 'citizen';
 }

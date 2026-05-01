@@ -1,6 +1,6 @@
 from app.api.schemas.user import (
     UserBase,
-    UserCreate,
+    RegisterRequest,
     UserUpdate,
     UserResponse,
     AdminPreferences,
@@ -15,7 +15,6 @@ from app.api.schemas.user import (
 )
 from app.api.schemas.report import (
     ReportBase,
-    ReportCreate,
     ReportUpdate,
     ReportResponse,
     ReportListResponse,
@@ -26,7 +25,7 @@ from app.api.schemas.report import (
 
 __all__ = [
     "UserBase",
-    "UserCreate",
+    "RegisterRequest",
     "UserUpdate",
     "UserResponse",
     "AdminPreferences",
@@ -39,7 +38,6 @@ __all__ = [
     "OTPResponse",
     "PhoneOTPVerifyRequest",
     "ReportBase",
-    "ReportCreate",
     "ReportUpdate",
     "ReportResponse",
     "ReportListResponse",

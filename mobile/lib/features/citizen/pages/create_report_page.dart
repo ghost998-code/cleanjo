@@ -1,10 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-import '../../../core/auth/auth_bloc.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/offline/sync_service.dart';
@@ -54,9 +52,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
       if (permission == LocationPermission.whileInUse || 
           permission == LocationPermission.always) {
         _currentPosition = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-          ),
+          desiredAccuracy: LocationAccuracy.high,
         );
         
         if (_currentPosition != null) {

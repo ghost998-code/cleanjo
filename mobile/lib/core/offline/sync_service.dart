@@ -76,7 +76,7 @@ class SyncService {
 
   Future<void> syncPendingReports() async {
     final connectivity = await Connectivity().checkConnectivity();
-    if (!connectivity.contains(ConnectivityResult.none)) {
+    if (connectivity != ConnectivityResult.none) {
       final pendingKeys = _pendingBox.keys.toList();
       
       for (final key in pendingKeys) {

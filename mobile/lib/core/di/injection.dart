@@ -3,11 +3,11 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:dio/dio.dart';
 
-import 'network/api_client.dart';
-import 'network/api_endpoints.dart';
-import 'auth/auth_bloc.dart';
-import 'auth/auth_repository.dart';
-import 'offline/sync_service.dart';
+import '../network/api_client.dart';
+import '../network/api_endpoints.dart';
+import '../auth/auth_bloc.dart';
+import '../auth/auth_repository.dart';
+import '../offline/sync_service.dart';
 
 final getIt = GetIt.instance;
 
