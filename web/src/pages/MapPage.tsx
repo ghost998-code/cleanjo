@@ -1,102 +1,41 @@
-import { useState, useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
-import L from 'leaflet'
+import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { Layers3, MapPinned } from 'lucide-react'
+
+import ReportsMap from '../components/ReportsMap'
 import api from '../services/api'
-import { GeoJSONResponse } from '../types'
-import 'leaflet/dist/leaflet.css'
-
-const SEVERITY_COLORS: Record<string, string> = {
-  low: '#22C55E',
-  medium: '#EAB308',
-  high: '#F97316',
-  critical: '#EF4444',
-}
-
-function createIcon(color: string) {
-  return L.divIcon({
-    className: 'custom-marker',
-    html: `<div style="background-color: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-  })
-}
-
-function HeatmapLayer({ points }: { points: Array<{ lat: number; lng: number; weight: number }> }) {
-  const map = useMap()
-
-  useEffect(() => {
-    const heatmapData = points.map((p) => [p.lat, p.lng, p.weight])
-    
-    // @ts-ignore
-    if (typeof L.heatLayer !== 'undefined') {
-      // @ts-ignore
-      const heatLayer = L.heatLayer(heatmapData, {
-        radius: 25,
-        blur: 15,
-        maxZoom: 17,
-        gradient: {
-          0.2: '#22C55E',
-          0.4: '#EAB308',
-          0.6: '#F97316',
-          0.8: '#EF4444',
-          1.0: '#DC2626',
-        },
-      }).addTo(map)
-
-      return () => {
-        map.removeLayer(heatLayer)
-      }
-    }
-  }, [points, map])
-
-  return null
-}
+import { ReportListResponse } from '../types'
 
 export default function MapPage() {
-  const [features, setFeatures] = useState<GeoJSONResponse['features']>([])
-  const [loading, setLoading] = useState(true)
-  const [showHeatmap, setShowHeatmap] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
 
-  useEffect(() => {
-    fetchMarkers()
-  }, [statusFilter])
-
-  const fetchMarkers = async () => {
-    setLoading(true)
-    try {
-      const params: Record<string, string> = {}
-      if (statusFilter) params.status = statusFilter
-
-      const response = await api.get<GeoJSONResponse>('/reports/map', { params })
-      setFeatures(response.data.features || [])
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const heatmapPoints = features.map((f) => ({
-    lat: f.geometry.coordinates[1],
-    lng: f.geometry.coordinates[0],
-    weight: f.properties.severity === 'critical' ? 5 : 
-            f.properties.severity === 'high' ? 3 : 
-            f.properties.severity === 'medium' ? 2 : 1,
-  }))
+  const { data: reports = [], isFetching: loading, isError } = useQuery({
+    queryKey: ['map-reports', { page_size: 1000, status: statusFilter }],
+    queryFn: async () => {
+      const params: Record<string, string> = { page_size: '1000' }
+      if (statusFilter) {
+        params.status = statusFilter
+      }
+      const response = await api.get<ReportListResponse>('/reports', { params })
+      return response.data.items || []
+    },
+    placeholderData: [],
+    retry: 1,
+  })
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Map View</h1>
-          <p className="text-gray-500">{features.length} markers</p>
+          <p className="text-sm font-medium uppercase tracking-[0.24em] text-emerald-600/70">Operations map</p>
+          <h1 className="mt-2 text-2xl font-bold text-gray-800">All reports pinned by location</h1>
+          <p className="text-gray-500">{reports.length} visible reports</p>
         </div>
         <div className="flex items-center gap-4">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
+            className="rounded-full border border-emerald-100 bg-white px-4 py-2 text-sm focus:ring-2 focus:ring-primary-500"
           >
             <option value="">All Status</option>
             <option value="submitted">Submitted</option>
@@ -105,77 +44,71 @@ export default function MapPage() {
             <option value="cleaned">Cleaned</option>
             <option value="rejected">Rejected</option>
           </select>
-          <button
-            onClick={() => setShowHeatmap(!showHeatmap)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-              showHeatmap
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {showHeatmap ? 'Show Markers' : 'Show Heatmap'}
-          </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="h-[calc(100vh-280px)] min-h-[500px]">
-          {loading ? (
-            <div className="h-full flex items-center justify-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-            </div>
-          ) : (
-            <MapContainer
-              center={[0, 0]}
-              zoom={13}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              
-              {showHeatmap ? (
-                <HeatmapLayer points={heatmapPoints} />
-              ) : (
-                features.map((feature) => {
-                  const color = SEVERITY_COLORS[feature.properties.severity] || '#9CA3AF'
-                  return (
-                    <Marker
-                      key={feature.properties.id}
-                      position={[
-                        feature.geometry.coordinates[1],
-                        feature.geometry.coordinates[0],
-                      ]}
-                      icon={createIcon(color)}
-                    >
-                      <Popup>
-                        <div className="text-sm">
-                          <p className="font-bold">{feature.properties.category || 'Unknown'}</p>
-                          <p>Status: {feature.properties.status}</p>
-                          <p>Severity: {feature.properties.severity}</p>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  )
-                })
-              )}
-            </MapContainer>
-          )}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-6">
-        <span className="text-sm font-medium text-gray-600">Legend:</span>
-        {Object.entries(SEVERITY_COLORS).map(([severity, color]) => (
-          <div key={severity} className="flex items-center gap-2">
-            <div
-              className="w-4 h-4 rounded-full"
-              style={{ backgroundColor: color }}
-            ></div>
-            <span className="text-sm text-gray-600 capitalize">{severity}</span>
+      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+        <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm">
+          <div className="h-[calc(100vh-280px)] min-h-[560px] bg-slate-950">
+            {isError ? (
+              <div className="flex h-full items-center justify-center px-6 text-center text-red-300">
+                Failed to load map reports. Please refresh and verify API connectivity.
+              </div>
+            ) : (
+              <div className="relative h-full w-full">
+                {loading && (
+                  <div className="absolute right-4 top-4 z-10 rounded-full bg-slate-900/70 px-3 py-1 text-xs text-white">
+                    Syncing...
+                  </div>
+                )}
+                <ReportsMap reports={reports} />
+              </div>
+            )}
           </div>
-        ))}
+        </div>
+
+        <aside className="space-y-4">
+          <div className="rounded-[2rem] bg-[linear-gradient(135deg,#052e16_0%,#0f172a_100%)] p-5 text-white shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-emerald-400/15 p-3 text-emerald-200">
+                <MapPinned className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-medium uppercase tracking-[0.22em] text-emerald-200/70">Map state</p>
+                <h2 className="mt-1 text-xl font-semibold">Live pins</h2>
+              </div>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-emerald-50/72">
+              This view keeps every report visible in its recorded location so admins can monitor spread, density, and response coverage.
+            </p>
+          </div>
+
+          <div className="rounded-[2rem] bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-600">
+                <Layers3 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900">Reports Sidebar</h3>
+                <p className="text-sm text-slate-500">List of visible reports.</p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-2">
+              {reports.map((report) => (
+                <div key={report.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase text-slate-500">{report.category?.replace('_', ' ')}</span>
+                    <span className="text-xs font-medium text-slate-400">{new Date(report.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-slate-700">{report.address || 'No address'}</p>
+                </div>
+              ))}
+              {reports.length === 0 && (
+                <p className="text-sm text-slate-500">No reports found.</p>
+              )}
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
   )

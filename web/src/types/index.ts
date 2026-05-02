@@ -24,6 +24,11 @@ export interface AdminSettingsResponse {
 export interface Report {
   id: string
   user_id: string
+  user?: {
+    full_name?: string
+    phone?: string
+    email?: string
+  }
   latitude: number
   longitude: number
   address?: string

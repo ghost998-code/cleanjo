@@ -364,6 +364,7 @@ class _CreateReportPageState extends State<CreateReportPage> {
 
     try {
       final apiClient = getIt<ApiClient>();
+      final syncService = getIt<SyncService>();
       final fields = {
         'latitude': _currentPosition!.latitude.toString(),
         'longitude': _currentPosition!.longitude.toString(),
@@ -373,7 +374,23 @@ class _CreateReportPageState extends State<CreateReportPage> {
         'severity': draft.severity,
       };
 
-      await _submitPhotos(apiClient, fields);
+      try {
+        await _submitPhotos(apiClient, fields);
+      } catch (e) {
+        if (e is DioException && _shouldQueueOffline(e)) {
+          // Fallback to offline queue
+          await syncService.queueReport(PendingReport(
+            draft: draft,
+            latitude: _currentPosition!.latitude,
+            longitude: _currentPosition!.longitude,
+            createdAt: DateTime.now(),
+          ));
+          _showSnackBar('No connection. Report queued for background sync.');
+          if (mounted) Navigator.of(context).pop(true);
+          return;
+        }
+        rethrow;
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -385,49 +402,9 @@ class _CreateReportPageState extends State<CreateReportPage> {
         Navigator.of(context).pop(true);
       }
     } on DioException catch (error) {
-      if (!_shouldQueueOffline(error)) {
         _showSnackBar(_parseSubmitError(error));
-      } else {
-        final syncService = getIt<SyncService>();
-        await syncService.queueReport(
-          PendingReport(
-            draft: draft,
-            latitude: _currentPosition!.latitude,
-            longitude: _currentPosition!.longitude,
-            createdAt: DateTime.now(),
-          ),
-        );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Report saved offline. Will sync when connected.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-          Navigator.of(context).pop(true);
-        }
-      }
     } catch (_) {
-      final syncService = getIt<SyncService>();
-      await syncService.queueReport(
-        PendingReport(
-          draft: draft,
-          latitude: _currentPosition!.latitude,
-          longitude: _currentPosition!.longitude,
-          createdAt: DateTime.now(),
-        ),
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Report saved offline. Will sync when connected.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        Navigator.of(context).pop(true);
-      }
+        _showSnackBar('An unexpected error occurred. Please try again.');
     }
 
     if (mounted) {

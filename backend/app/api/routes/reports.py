@@ -75,6 +75,20 @@ def ensure_status_transition(current_status: ReportStatus, new_status: ReportSta
         )
 
 
+async def publish_report_event(event_type: str, report: Report) -> None:
+    try:
+        await kafka_service.send_message(
+            "report.events",
+            {
+                "type": event_type,
+                "data": ReportDetailResponse.model_validate(report).model_dump(mode="json"),
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
+    except Exception as e:
+        print(f"Failed to publish to kafka: {e}")
+
+
 photo_metadata_adapter = TypeAdapter(List[ReportPhotoCreate])
 report_inference_summary_adapter = TypeAdapter(ReportInferenceSummary)
 
@@ -317,6 +331,8 @@ async def create_report(
     await db.commit()
     await db.refresh(report)
 
+    await publish_report_event("CREATED", report)
+
     return report
 
 
@@ -332,7 +348,7 @@ async def list_reports(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = select(Report).order_by(Report.created_at.desc())
+    query = select(Report).where(Report.deleted_at.is_(None)).order_by(Report.created_at.desc())
     
     if current_user.role == UserRole.CITIZEN:
         query = query.where(Report.user_id == current_user.id)
@@ -356,7 +372,7 @@ async def list_reports(
     total_result = await db.execute(count_query)
     total = total_result.scalar()
     
-    query = paginate(query, page, page_size)
+    query = paginate(query, page, page_size).options(selectinload(Report.user))
     result = await db.execute(query)
     reports = result.scalars().all()
     
@@ -377,13 +393,13 @@ async def list_my_reports(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = select(Report).where(Report.user_id == current_user.id).order_by(Report.created_at.desc())
+    query = select(Report).where(Report.user_id == current_user.id, Report.deleted_at.is_(None)).order_by(Report.created_at.desc())
     if status_filter:
         query = query.where(Report.status == status_filter)
 
     count_query = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_query)).scalar() or 0
-    result = await db.execute(paginate(query, page, page_size))
+    result = await db.execute(paginate(query, page, page_size).options(selectinload(Report.user)))
     reports = result.scalars().all()
 
     return ReportListResponse(
@@ -405,7 +421,7 @@ async def get_reports_map(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = select(Report)
+    query = select(Report).where(Report.deleted_at.is_(None))
     
     if status_filter:
         query = query.where(Report.status == status_filter)
@@ -451,8 +467,9 @@ async def get_report(
 ):
     result = await db.execute(
         select(Report)
-        .where(Report.id == report_id)
+        .where(Report.id == report_id, Report.deleted_at.is_(None))
         .options(
+            selectinload(Report.user),
             selectinload(Report.photos),
             selectinload(Report.status_history),
             selectinload(Report.feedback_entries),
@@ -476,7 +493,7 @@ async def update_report(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_inspector_or_admin),
 ):
-    result = await db.execute(select(Report).where(Report.id == report_id))
+    result = await db.execute(select(Report).where(Report.id == report_id, Report.deleted_at.is_(None)))
     report = result.scalar_one_or_none()
     
     if not report:
@@ -511,16 +528,7 @@ async def update_report(
     await db.commit()
     await db.refresh(report)
 
-    try:
-        await kafka_service.send_message("report.status.changed", {
-            "report_id": str(report.id),
-            "old_status": old_status.value if old_status else None,
-            "new_status": report.status.value,
-            "changed_by": str(current_user.id),
-            "timestamp": datetime.utcnow().isoformat(),
-        })
-    except Exception:
-        pass
+    await publish_report_event("UPDATED", report)
 
     return report
 
@@ -532,7 +540,7 @@ async def update_report_status(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_inspector_or_admin),
 ):
-    result = await db.execute(select(Report).where(Report.id == report_id))
+    result = await db.execute(select(Report).where(Report.id == report_id, Report.deleted_at.is_(None)))
     report = result.scalar_one_or_none()
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
@@ -559,6 +567,7 @@ async def update_report_status(
     )
     await db.commit()
     await db.refresh(report)
+    await publish_report_event("UPDATED", report)
     return report
 
 
@@ -568,14 +577,29 @@ async def delete_report(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_admin_user),
 ):
-    result = await db.execute(select(Report).where(Report.id == report_id))
+    result = await db.execute(select(Report).where(Report.id == report_id, Report.deleted_at.is_(None)))
     report = result.scalar_one_or_none()
     
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     
-    await db.delete(report)
+    report.deleted_at = datetime.utcnow()
+    await db.flush()
+    deleted_report = ReportDetailResponse.model_validate(report).model_dump(mode="json")
     await db.commit()
+
+    try:
+        await kafka_service.send_message(
+            "report.events",
+            {
+                "type": "DELETED",
+                "data": deleted_report,
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
+    except Exception as e:
+        print(f"Failed to publish to kafka: {e}")
+
 
 
 @router.get("/{report_id}/history", response_model=List[StatusHistoryResponse])
@@ -586,6 +610,8 @@ async def get_report_history(
 ):
     result = await db.execute(
         select(StatusHistory)
+        .join(Report, StatusHistory.report_id == Report.id)
+        .where(Report.deleted_at.is_(None))
         .where(StatusHistory.report_id == report_id)
         .order_by(StatusHistory.created_at.desc())
     )
@@ -600,7 +626,7 @@ async def create_report_feedback(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Report).where(Report.id == report_id))
+    result = await db.execute(select(Report).where(Report.id == report_id, Report.deleted_at.is_(None)))
     report = result.scalar_one_or_none()
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")

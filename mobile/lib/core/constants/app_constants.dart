@@ -2,14 +2,12 @@ class AppConstants {
   static const String appName = 'Garbage Detection';
 
   static const List<String> garbageTypes = [
-    'plastic',
-    'paper',
-    'glass',
-    'metal',
-    'organic',
-    'electronic',
-    'hazardous',
+    'household',
     'construction',
+    'green',
+    'hazardous',
+    'electronic',
+    'bulky',
     'mixed',
     'other',
   ];

@@ -93,6 +93,7 @@ class Report(Base):
     assigned_to = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
 
     user = relationship("User", back_populates="reports", foreign_keys=[user_id])
     assignee = relationship(

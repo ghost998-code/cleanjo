@@ -102,11 +102,19 @@ class ReportPhotoCreate(BaseModel):
     top_predictions: Optional[List[InferencePrediction]] = None
 
 
+class ReportUser(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+
 class ReportResponse(ReportBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     user_id: UUID
+    user: Optional[ReportUser] = None
     garbage_type: Optional[str] = None
     image_url: Optional[str] = None
     video_url: Optional[str] = None

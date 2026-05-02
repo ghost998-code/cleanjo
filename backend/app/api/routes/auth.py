@@ -138,7 +138,7 @@ async def verify_phone_otp(phone_data: PhoneOTPVerifyRequest, db: AsyncSession =
             user.email = build_phone_email(normalized_phone)
 
     user.last_login = datetime.utcnow()
-    access_token = create_access_token(data={"sub": str(user.id)})
+    access_token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
     await log_audit(db, action="auth.phone_otp_login", user_id=user.id)
@@ -172,7 +172,7 @@ async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db)):
         user.email = build_phone_email(normalized_phone)
 
     user.last_login = datetime.utcnow()
-    access_token = create_access_token(data={"sub": str(user.id)})
+    access_token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
     await log_audit(db, action="auth.login", user_id=user.id)
@@ -201,7 +201,7 @@ async def refresh_token(refresh_request: RefreshTokenRequest, db: AsyncSession =
             detail="User not found",
         )
 
-    new_access_token = create_access_token(data={"sub": str(user.id)})
+    new_access_token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
     new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
     return Token(access_token=new_access_token, refresh_token=new_refresh_token)

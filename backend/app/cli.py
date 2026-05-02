@@ -96,7 +96,7 @@ async def create_admin(args: argparse.Namespace) -> int:
         print(f"Generated password: {generated_password}")
     print("Role: admin")
     print(
-        "Login to the web admin dashboard with the phone number above and the OTP flow on /login."
+        "Login to the web admin dashboard at /admin/login with the email or phone number above and the saved password."
     )
     return 0
 

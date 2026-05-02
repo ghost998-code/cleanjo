@@ -2,6 +2,7 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: '/api/v1',
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -36,7 +37,7 @@ api.interceptors.response.use(
       } catch (_) {
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
-        window.location.href = '/login'
+        window.location.href = '/admin/login'
       }
     }
     

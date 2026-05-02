@@ -14,6 +14,7 @@ import {
   Users,
 } from 'lucide-react'
 import clsx from 'clsx'
+import { useReportWebSocket } from '../hooks/useReportWebSocket'
 
 const navItems = [
   { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
@@ -24,6 +25,7 @@ const navItems = [
 ]
 
 export default function Layout() {
+  useReportWebSocket()
   const { user, logout } = useAuth()
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)

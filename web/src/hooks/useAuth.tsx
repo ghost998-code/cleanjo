@@ -37,6 +37,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('refresh_token', response.data.refresh_token)
     
     const userResponse = await api.get('/auth/me')
+    if (userResponse.data.role !== 'admin') {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      throw new Error('Only administrator accounts can access the web portal.')
+    }
+
     setUser(userResponse.data)
     return userResponse.data
   }

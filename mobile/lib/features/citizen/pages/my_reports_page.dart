@@ -50,7 +50,8 @@ class _MyReportsPageState extends State<MyReportsPage>
       }
 
       final response =
-          await apiClient.get('/reports', queryParameters: queryParams);
+          await apiClient.get(ApiEndpoints.reports + '/me', queryParameters: queryParams);
+      
       final pendingReports = _buildPendingReports(syncService);
       setState(() {
         _reports = [
@@ -60,13 +61,14 @@ class _MyReportsPageState extends State<MyReportsPage>
         _isLoading = false;
       });
     } catch (e) {
+      debugPrint('Error fetching reports: $e');
       setState(() {
         _reports = _buildPendingReports(getIt<SyncService>());
         _isLoading = false;
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load reports')),
+          const SnackBar(content: Text('Failed to load reports. Please try again.')),
         );
       }
     }
