@@ -14,6 +14,8 @@ from app.api.schemas.user import (
     PhoneOTPVerifyRequest,
 )
 from app.api.schemas.report import (
+    ReportPhotoCreate,
+    ReportPhotoResponse,
     ReportBase,
     ReportUpdate,
     ReportResponse,
@@ -22,6 +24,7 @@ from app.api.schemas.report import (
     GeoJSONResponse,
     StatusHistoryResponse,
 )
+from app.api.schemas.config import MobileConfigResponse
 
 __all__ = [
     "UserBase",
@@ -37,6 +40,8 @@ __all__ = [
     "OTPRequest",
     "OTPResponse",
     "PhoneOTPVerifyRequest",
+    "ReportPhotoCreate",
+    "ReportPhotoResponse",
     "ReportBase",
     "ReportUpdate",
     "ReportResponse",
@@ -44,4 +49,5 @@ __all__ = [
     "GeoJSONFeature",
     "GeoJSONResponse",
     "StatusHistoryResponse",
+    "MobileConfigResponse",
 ]

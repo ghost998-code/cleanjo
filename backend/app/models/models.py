@@ -84,6 +84,10 @@ class Report(Base):
     reachability = Column(Enum(ReachabilityType, values_callable=enum_values), default=ReachabilityType.MODERATE, nullable=False)
     density = Column(Enum(DensityType, values_callable=enum_values), default=DensityType.MODERATE, nullable=False)
     amount_estimate = Column(Enum(AmountEstimate, values_callable=enum_values), default=AmountEstimate.BAG_1, nullable=False)
+    inference_summary_category = Column(String(50))
+    inference_summary_confidence = Column(Float)
+    inference_summary_strategy = Column(String(100))
+    inference_model_version = Column(String(100))
     admin_notes = Column(Text)
     status = Column(Enum(ReportStatus, values_callable=enum_values), default=ReportStatus.SUBMITTED)
     assigned_to = Column(UUID(as_uuid=True), ForeignKey("users.id"))
@@ -96,6 +100,12 @@ class Report(Base):
     )
     status_history = relationship(
         "StatusHistory", back_populates="report", order_by="StatusHistory.created_at"
+    )
+    photos = relationship(
+        "ReportPhoto",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        order_by="ReportPhoto.created_at",
     )
     feedback_entries = relationship("Feedback", back_populates="report")
     audit_logs = relationship("AuditLog", back_populates="report")
@@ -123,6 +133,40 @@ class StatusHistory(Base):
 
     report = relationship("Report", back_populates="status_history")
     changed_by_user = relationship("User", back_populates="status_changes")
+
+
+class ReportPhoto(Base):
+    __tablename__ = "report_photos"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    report_id = Column(UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=False)
+    image_url = Column(String(500), nullable=False)
+    source_type = Column(String(20), nullable=False)
+    latitude = Column(Numeric(10, 8), nullable=False)
+    longitude = Column(Numeric(11, 8), nullable=False)
+    gps_accuracy = Column(Float, nullable=False)
+    captured_at = Column(DateTime, nullable=False)
+    exif_latitude = Column(Numeric(10, 8))
+    exif_longitude = Column(Numeric(11, 8))
+    exif_accuracy = Column(Float)
+    exif_captured_at = Column(DateTime)
+    predicted_category = Column(String(50), nullable=False)
+    prediction_confidence = Column(Float, nullable=False)
+    predicted_severity = Column(String(50))
+    severity_confidence = Column(Float)
+    model_name = Column(String(100), nullable=False)
+    model_version = Column(String(100), nullable=False)
+    inference_ran_at = Column(DateTime, nullable=False)
+    inference_source = Column(String(20), nullable=False, default="mobile")
+    top_predictions = Column(JSON)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    report = relationship("Report", back_populates="photos")
+
+    __table_args__ = (
+        Index("idx_report_photos_report_id", "report_id"),
+        Index("idx_report_photos_created", "created_at"),
+    )
 
 
 class Feedback(Base):

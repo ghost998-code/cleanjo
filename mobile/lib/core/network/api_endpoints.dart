@@ -16,6 +16,7 @@ class ApiEndpoints {
   static const String verifyPhoneOtp = '/auth/verify-phone-otp';
   static const String refresh = '/auth/refresh';
   static const String me = '/auth/me';
+  static const String mobileConfig = '/config/mobile';
 
   static const String reports = '/reports';
   static String report(String id) => '/reports/$id';

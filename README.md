@@ -150,9 +150,8 @@ The web dashboard is admin-only and uses password login on `/admin/login`. Citiz
 ### Backend
 - RESTful API with JWT authentication
 - Kafka event streaming for async processing
-- ML worker for garbage classification (placeholder)
 - Notification worker for status updates
-- Image upload to Cloudinary/S3
+- Backend-managed local file uploads
 - Geo-queries with PostGIS support
 
 ## Development
@@ -160,9 +159,6 @@ The web dashboard is admin-only and uses password login on `/admin/login`. Citiz
 ### Run Workers
 
 ```bash
-# ML Worker (garbage classification)
-python -m app.workers.ml_worker
-
 # Notification Worker
 python -m app.workers.notification_worker
 ```
@@ -190,7 +186,7 @@ alembic downgrade -1
 | `REDIS_URL` | Redis connection string | redis://localhost:6379 |
 | `KAFKA_BOOTSTRAP_SERVERS` | Kafka broker address | localhost:9092 |
 | `JWT_SECRET_KEY` | JWT signing key | (change in production) |
-| `CLOUDINARY_*` | Cloudinary credentials | (optional) |
+| `PUBLIC_BASE_URL` | Base URL used for served uploads | http://localhost:8000 |
 
 ## Project Structure
 

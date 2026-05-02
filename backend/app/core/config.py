@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from pathlib import Path
 
 
 class Settings(BaseSettings):
@@ -15,7 +16,6 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379"
 
     KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
-    KAFKA_TOPIC_REPORT_CREATED: str = "report.created"
     KAFKA_TOPIC_STATUS_CHANGED: str = "report.status.changed"
     KAFKA_TOPIC_REPORT_ASSIGNED: str = "report.assigned"
 
@@ -30,14 +30,15 @@ class Settings(BaseSettings):
     MAX_IMAGE_UPLOAD_BYTES: int = 5 * 1024 * 1024
     MAX_VIDEO_UPLOAD_BYTES: int = 20 * 1024 * 1024
     MAX_DESCRIPTION_LENGTH: int = 500
+    MAX_REPORT_PHOTOS: int = 15
     GPS_WARNING_ACCURACY_METERS: float = 20.0
-    GPS_MAX_ACCURACY_METERS: float = 50.0
+    GPS_MAX_ACCURACY_METERS: float = 10.0
 
+    PUBLIC_BASE_URL: str = "http://localhost:8000"
+    LOCAL_UPLOAD_DIR: str = str(Path(__file__).resolve().parents[2] / "uploads")
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
-
-    ML_MODEL_PATH: str = "app/ml/garbage_classifier.tflite"
 
     class Config:
         env_file = ".env"

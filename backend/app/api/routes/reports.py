@@ -1,8 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timezone
+import json
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -14,8 +16,10 @@ from app.api.schemas.report import (
     FeedbackResponse,
     GeoJSONFeature,
     GeoJSONResponse,
+    ReportInferenceSummary,
     ReportDetailResponse,
     ReportListResponse,
+    ReportPhotoCreate,
     ReportResponse,
     ReportStatusUpdate,
     ReportUpdate,
@@ -34,7 +38,7 @@ from app.core.constants import (
     UserRole,
 )
 from app.core.database import get_db
-from app.models import Feedback, Report, StatusHistory, User
+from app.models import Feedback, Report, ReportPhoto, StatusHistory, User
 from app.services.audit import log_audit
 from app.services.kafka import kafka_service
 from app.services.image import upload_image, upload_video
@@ -71,8 +75,74 @@ def ensure_status_transition(current_status: ReportStatus, new_status: ReportSta
         )
 
 
+photo_metadata_adapter = TypeAdapter(List[ReportPhotoCreate])
+report_inference_summary_adapter = TypeAdapter(ReportInferenceSummary)
+
+
+def parse_photo_metadata(photo_metadata: Optional[str]) -> List[ReportPhotoCreate]:
+    if not photo_metadata:
+        return []
+
+    try:
+        payload = json.loads(photo_metadata)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="photo_metadata must be valid JSON") from exc
+
+    try:
+        return photo_metadata_adapter.validate_python(payload)
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=exc.errors()) from exc
+
+
+def parse_report_inference_summary(report_inference_summary: Optional[str]) -> Optional[ReportInferenceSummary]:
+    if not report_inference_summary:
+        return None
+
+    try:
+        payload = json.loads(report_inference_summary)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="report_inference_summary must be valid JSON") from exc
+
+    try:
+        return report_inference_summary_adapter.validate_python(payload)
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=exc.errors()) from exc
+
+
+def validate_photo_metadata_entries(photo_entries: List[ReportPhotoCreate]) -> None:
+    for entry in photo_entries:
+        if entry.gps_accuracy <= 0:
+            raise HTTPException(status_code=400, detail="GPS accuracy must be positive")
+
+        if entry.source_type == "gallery":
+            if entry.exif_latitude is None or entry.exif_longitude is None:
+                raise HTTPException(status_code=400, detail="Gallery photos must include EXIF GPS coordinates")
+            if entry.exif_accuracy is not None and entry.exif_accuracy <= 0:
+                raise HTTPException(status_code=400, detail="Gallery photo EXIF accuracy must be positive")
+
+
+def validate_report_inference_summary(
+    report_inference_summary: Optional[ReportInferenceSummary],
+    photo_entries: List[ReportPhotoCreate],
+) -> None:
+    if report_inference_summary is None:
+        return
+
+    if report_inference_summary.derived_from_photo_count != len(photo_entries):
+        raise HTTPException(status_code=400, detail="Summary photo count must match uploaded photo count")
+
+
+def to_utc_naive(value: Optional[datetime]) -> Optional[datetime]:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+
 @router.post("", response_model=ReportResponse, status_code=status.HTTP_201_CREATED)
 async def create_report(
+    request: Request,
     latitude: Optional[float] = Form(None),
     longitude: Optional[float] = Form(None),
     lat: Optional[float] = Form(None),
@@ -95,30 +165,76 @@ async def create_report(
     accuracy_override: bool = Form(False),
     image: Optional[UploadFile] = File(None),
     photo: Optional[UploadFile] = File(None),
+    photo_metadata: Optional[str] = Form(None),
+    report_inference_summary: Optional[str] = Form(None),
     video: Optional[UploadFile] = File(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    form = await request.form()
+    uploaded_photos = [
+        uploaded_photo
+        for uploaded_photo in form.getlist("photos")
+        if getattr(uploaded_photo, "filename", None)
+    ]
+
+    if uploaded_photos and (image or photo):
+        raise HTTPException(status_code=400, detail="Use either photos or image/photo fields, not both")
+
+    image_file = photo or image
+    if image_file:
+        uploaded_photos.append(image_file)
+
+    if not uploaded_photos:
+        raise HTTPException(status_code=400, detail="At least one photo is required")
+    if len(uploaded_photos) > settings.MAX_REPORT_PHOTOS:
+        raise HTTPException(status_code=400, detail="Photo count exceeds maximum allowed")
+
+    metadata_entries = parse_photo_metadata(photo_metadata)
+    if not metadata_entries:
+        raise HTTPException(status_code=400, detail="photo_metadata is required for all photo uploads")
+    if metadata_entries and len(metadata_entries) != len(uploaded_photos):
+        raise HTTPException(status_code=400, detail="Photo metadata count must match uploaded photo count")
+    report_summary = parse_report_inference_summary(report_inference_summary)
+
+    validate_photo_metadata_entries(metadata_entries)
+    validate_report_inference_summary(report_summary, metadata_entries)
+
+    first_photo_metadata = metadata_entries[0] if metadata_entries else None
+
     normalized_latitude = latitude if latitude is not None else lat
+    if normalized_latitude is None and first_photo_metadata is not None:
+        normalized_latitude = first_photo_metadata.latitude
+
     normalized_longitude = longitude if longitude is not None else lng
+    if normalized_longitude is None and first_photo_metadata is not None:
+        normalized_longitude = first_photo_metadata.longitude
+
     normalized_accuracy = gps_accuracy if gps_accuracy is not None else accuracy
-    normalized_reported_at = reported_at or timestamp or datetime.utcnow()
+    if normalized_accuracy is None and first_photo_metadata is not None:
+        normalized_accuracy = first_photo_metadata.gps_accuracy
+
+    normalized_reported_at = reported_at or timestamp
+    if normalized_reported_at is None and first_photo_metadata is not None:
+        normalized_reported_at = first_photo_metadata.captured_at
+    normalized_reported_at = normalized_reported_at or datetime.utcnow()
+    normalized_reported_at = to_utc_naive(normalized_reported_at)
 
     if normalized_latitude is None or normalized_longitude is None:
         raise HTTPException(status_code=400, detail="Latitude and longitude are required")
     if description and len(description) > settings.MAX_DESCRIPTION_LENGTH:
         raise HTTPException(status_code=400, detail="Description is too long")
     if normalized_accuracy is not None:
-        if normalized_accuracy > settings.GPS_MAX_ACCURACY_METERS and not accuracy_override:
-            raise HTTPException(status_code=400, detail="GPS accuracy is too low for submission")
         if normalized_accuracy <= 0:
             raise HTTPException(status_code=400, detail="GPS accuracy must be positive")
 
-    image_file = photo or image
-    image_url = None
-    if image_file:
-        contents = await read_upload(image_file, settings.MAX_IMAGE_UPLOAD_BYTES, "image/")
-        image_url = await upload_image(contents)
+    photo_urls: List[str] = []
+    for uploaded_photo in uploaded_photos:
+        contents = await read_upload(uploaded_photo, settings.MAX_IMAGE_UPLOAD_BYTES, "image/")
+        photo_urls.append(await upload_image(contents))
+
+    # Keep the legacy cover image populated while older consumers transition to report_photos.
+    image_url = photo_urls[0]
 
     video_url = None
     if video:
@@ -146,10 +262,42 @@ async def create_report(
         amount_estimate=amount_estimate or amount or AmountEstimate.BAG_1,
         image_url=image_url,
         video_url=video_url,
+        inference_summary_category=report_summary.summary_category if report_summary else None,
+        inference_summary_confidence=report_summary.summary_confidence if report_summary else None,
+        inference_summary_strategy=report_summary.summary_strategy if report_summary else None,
+        inference_model_version=report_summary.model_version if report_summary else None,
         status=ReportStatus.SUBMITTED,
     )
     db.add(report)
     await db.flush()
+
+    if metadata_entries:
+        for photo_url, metadata_entry in zip(photo_urls, metadata_entries):
+            db.add(
+                ReportPhoto(
+                    report_id=report.id,
+                    image_url=photo_url,
+                    source_type=metadata_entry.source_type,
+                    latitude=metadata_entry.latitude,
+                    longitude=metadata_entry.longitude,
+                    gps_accuracy=metadata_entry.gps_accuracy,
+                    captured_at=to_utc_naive(metadata_entry.captured_at),
+                    exif_latitude=metadata_entry.exif_latitude,
+                    exif_longitude=metadata_entry.exif_longitude,
+                    exif_accuracy=metadata_entry.exif_accuracy,
+                    exif_captured_at=to_utc_naive(metadata_entry.exif_captured_at),
+                    predicted_category=metadata_entry.predicted_category.value,
+                    prediction_confidence=metadata_entry.prediction_confidence,
+                    predicted_severity=metadata_entry.predicted_severity.value if metadata_entry.predicted_severity else None,
+                    severity_confidence=metadata_entry.severity_confidence,
+                    model_name=metadata_entry.model_name,
+                    model_version=metadata_entry.model_version,
+                    inference_ran_at=to_utc_naive(metadata_entry.inference_ran_at),
+                    inference_source=metadata_entry.inference_source,
+                    top_predictions=[prediction.model_dump(mode="json") for prediction in metadata_entry.top_predictions] if metadata_entry.top_predictions else None,
+                )
+            )
+
     db.add(
         StatusHistory(
             report=report,
@@ -168,17 +316,6 @@ async def create_report(
     )
     await db.commit()
     await db.refresh(report)
-
-    try:
-        await kafka_service.send_message("report.created", {
-            "report_id": str(report.id),
-            "user_id": str(current_user.id),
-            "latitude": normalized_latitude,
-            "longitude": normalized_longitude,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
-    except Exception:
-        pass
 
     return report
 
@@ -315,7 +452,11 @@ async def get_report(
     result = await db.execute(
         select(Report)
         .where(Report.id == report_id)
-        .options(selectinload(Report.status_history), selectinload(Report.feedback_entries))
+        .options(
+            selectinload(Report.photos),
+            selectinload(Report.status_history),
+            selectinload(Report.feedback_entries),
+        )
     )
     report = result.scalar_one_or_none()
     

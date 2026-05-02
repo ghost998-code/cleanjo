@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'core/offline/sync_service.dart';
+import 'core/config/mobile_config_service.dart';
 import 'core/di/injection.dart';
 import 'core/auth/auth_bloc.dart';
 import 'features/home/pages/home_page.dart';
@@ -12,6 +14,8 @@ import 'features/profile/pages/profile_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initDependencies();
+  await getIt<MobileConfigService>().initialize();
+  await getIt<SyncService>().start();
   runApp(const GarbageDetectionApp());
 }
 

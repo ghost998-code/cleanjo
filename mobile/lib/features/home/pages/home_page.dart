@@ -92,22 +92,28 @@ class _HomePageState extends State<HomePage> {
             Text(
               'Hello, ${user.fullName ?? 'User'}!',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               'Help keep our city clean',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Colors.grey,
-              ),
+                    color: Colors.grey,
+                  ),
             ),
             const SizedBox(height: 24),
             Card(
               clipBehavior: Clip.antiAlias,
               child: InkWell(
-                onTap: () {
-                  Navigator.of(context).pushNamed('/create-report');
+                onTap: () async {
+                  final created =
+                      await Navigator.of(context).pushNamed('/create-report');
+                  if (created == true && mounted) {
+                    setState(() {
+                      _currentIndex = 2;
+                    });
+                  }
                 },
                 child: Container(
                   padding: const EdgeInsets.all(24),
@@ -133,17 +139,23 @@ class _HomePageState extends State<HomePage> {
                           children: [
                             Text(
                               'Report Garbage',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               'Take a photo and report litter in your area',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.white.withOpacity(0.9),
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                  ),
                             ),
                           ],
                         ),
@@ -161,8 +173,8 @@ class _HomePageState extends State<HomePage> {
             Text(
               'Quick Actions',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 12),
             Row(

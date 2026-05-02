@@ -1,6 +1,6 @@
 class AppConstants {
   static const String appName = 'Garbage Detection';
-  
+
   static const List<String> garbageTypes = [
     'plastic',
     'paper',
@@ -22,6 +22,8 @@ class AppConstants {
   };
 
   static const Map<String, String> statusLabels = {
+    'pending_sync': 'Pending Sync',
+    'failed_sync': 'Sync Failed',
     'submitted': 'Submitted',
     'under_review': 'Under Review',
     'scheduled': 'Scheduled',
@@ -37,6 +39,8 @@ class AppConstants {
   };
 
   static const Map<String, int> statusColors = {
+    'pending_sync': 0xFFF59E0B,
+    'failed_sync': 0xFFDC2626,
     'submitted': 0xFF94A3B8,
     'under_review': 0xFF2196F3,
     'scheduled': 0xFFFF9800,

@@ -21,6 +21,8 @@ dependencies:
   geocoding: ^2.2.0
   
   image_picker: ^1.0.7
+  image: ^4.2.0
+  exif: ^3.3.0
   
   google_maps_flutter: ^2.9.0
   

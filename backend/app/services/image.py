@@ -1,19 +1,30 @@
 from datetime import datetime
+from pathlib import Path
+import uuid
 
-import cloudinary
-import cloudinary.uploader
 from app.core.config import settings
-
-cloudinary.config(
-    cloud_name=settings.CLOUDINARY_CLOUD_NAME,
-    api_key=settings.CLOUDINARY_API_KEY,
-    api_secret=settings.CLOUDINARY_API_SECRET,
-)
 
 
 def build_report_folder() -> str:
     now = datetime.utcnow()
     return f"reports/{now.year}/{now.month:02d}"
+
+
+def build_local_upload_path(resource_type: str, folder: str | None = None) -> tuple[Path, str]:
+    target_folder = Path(settings.LOCAL_UPLOAD_DIR) / (folder or build_report_folder())
+    target_folder.mkdir(parents=True, exist_ok=True)
+
+    if resource_type == "image":
+        suffix = ".jpg"
+    elif resource_type == "video":
+        suffix = ".mp4"
+    else:
+        suffix = ".bin"
+
+    file_name = f"{uuid.uuid4().hex}{suffix}"
+    file_path = target_folder / file_name
+    relative_path = file_path.relative_to(Path(settings.LOCAL_UPLOAD_DIR)).as_posix()
+    return file_path, f"{settings.PUBLIC_BASE_URL.rstrip('/')}/uploads/{relative_path}"
 
 
 async def upload_media(
@@ -22,12 +33,9 @@ async def upload_media(
     resource_type: str,
     folder: str | None = None,
 ) -> str:
-    result = cloudinary.uploader.upload(
-        file_data,
-        folder=folder or build_report_folder(),
-        resource_type=resource_type,
-    )
-    return result["secure_url"]
+    file_path, public_url = build_local_upload_path(resource_type, folder)
+    file_path.write_bytes(file_data)
+    return public_url
 
 
 async def upload_image(file_data: bytes, folder: str | None = None) -> str:
@@ -39,5 +47,12 @@ async def upload_video(file_data: bytes, folder: str | None = None) -> str:
 
 
 async def delete_image(public_id: str) -> bool:
-    result = cloudinary.uploader.destroy(public_id)
-    return result.get("result") == "ok"
+    if not public_id.startswith(f"{settings.PUBLIC_BASE_URL.rstrip('/')}/uploads/"):
+        return False
+
+    relative_path = public_id.split("/uploads/", 1)[1]
+    file_path = Path(settings.LOCAL_UPLOAD_DIR) / relative_path
+    if file_path.exists():
+        file_path.unlink()
+        return True
+    return False
