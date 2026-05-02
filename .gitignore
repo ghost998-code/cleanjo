@@ -35,6 +35,7 @@ venv/
 env/
 ENV/
 *.egg-info/
+reports/
 
 # JavaScript / TypeScript web app
 node_modules/
