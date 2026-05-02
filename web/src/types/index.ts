@@ -51,6 +51,22 @@ export interface Report {
   updated_at: string
 }
 
+export interface ReportPhoto {
+  id: string
+  report_id: string
+  image_url: string
+  source_type: string
+  latitude: number
+  longitude: number
+  gps_accuracy: number
+  captured_at: string
+  created_at: string
+}
+
+export interface ReportDetail extends Report {
+  photos: ReportPhoto[]
+}
+
 export interface ReportListResponse {
   items: Report[]
   total: number

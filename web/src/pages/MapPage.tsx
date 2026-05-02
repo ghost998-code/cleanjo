@@ -8,13 +8,16 @@ import { ReportListResponse } from '../types'
 
 export default function MapPage() {
   const [statusFilter, setStatusFilter] = useState('')
+  const normalizedStatusFilter = statusFilter || undefined
 
   const { data: reports = [], isFetching: loading, isError } = useQuery({
-    queryKey: ['map-reports', { page_size: 1000, status: statusFilter }],
+    queryKey: normalizedStatusFilter
+      ? ['map-reports', { page_size: 100, status: normalizedStatusFilter }]
+      : ['map-reports', { page_size: 100 }],
     queryFn: async () => {
-      const params: Record<string, string> = { page_size: '1000' }
-      if (statusFilter) {
-        params.status = statusFilter
+      const params: Record<string, string> = { page_size: '100' }
+      if (normalizedStatusFilter) {
+        params.status = normalizedStatusFilter
       }
       const response = await api.get<ReportListResponse>('/reports', { params })
       return response.data.items || []

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'dart:ui' as ui;
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import '../../../core/di/injection.dart';
@@ -24,12 +25,23 @@ class _MapPageState extends State<MapPage> {
   String? _selectedStatus;
   LatLng _currentCenter = _defaultCenter;
   LatLng? _userLocation;
+  BitmapDescriptor _greenCircleIcon = BitmapDescriptor.defaultMarkerWithHue(
+    BitmapDescriptor.hueGreen,
+  );
 
   @override
   void initState() {
     super.initState();
+    _prepareMarkerIcon();
     _fetchMarkers();
     _initializeUserLocation();
+  }
+
+  Future<void> _prepareMarkerIcon() async {
+    _greenCircleIcon = await _createGreenCircleMarkerIcon();
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _initializeUserLocation() async {
@@ -197,21 +209,35 @@ class _MapPageState extends State<MapPage> {
           snippet: AppConstants.statusLabels[marker.properties['status']] ?? marker.properties['status']?.toString(),
           onTap: () => _showMarkerInfo(marker.properties),
         ),
-        icon: _markerHueForSeverity(severity),
+        icon: _greenCircleIcon,
         onTap: () => _showMarkerInfo(marker.properties),
       );
     }).toSet();
   }
 
-  BitmapDescriptor _markerHueForSeverity(String severity) {
-    switch (severity) {
-      case 'high':
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
-      case 'medium':
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
-      default:
-        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
+  Future<BitmapDescriptor> _createGreenCircleMarkerIcon() async {
+    const double size = 48;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final center = const Offset(size / 2, size / 2);
+
+    final fillPaint = Paint()..color = const Color(0xFF22C55E);
+    final borderPaint =
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4;
+
+    canvas.drawCircle(center, 14, fillPaint);
+    canvas.drawCircle(center, 14, borderPaint);
+
+    final image = await recorder.endRecording().toImage(size.toInt(), size.toInt());
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) {
+      return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
     }
+
+    return BitmapDescriptor.bytes(byteData.buffer.asUint8List());
   }
 
   Future<void> _zoomBy(double delta) async {
@@ -559,8 +585,9 @@ class _MapPageState extends State<MapPage> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: () {
+                  onPressed: () async {
                     Navigator.pop(context);
+                    await _showReportDetails(props);
                   },
                   child: const Text('View Details'),
                 ),
@@ -579,6 +606,136 @@ class _MapPageState extends State<MapPage> {
     } catch (_) {
       return dateStr;
     }
+  }
+
+  Future<void> _showReportDetails(Map<String, dynamic> props) async {
+    final reportId = props['id']?.toString();
+    if (reportId == null || reportId.isEmpty) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final apiClient = getIt<ApiClient>();
+      final response = await apiClient.get('${ApiEndpoints.reports}/$reportId');
+      final detail = response.data is Map<String, dynamic>
+          ? response.data as Map<String, dynamic>
+          : <String, dynamic>{};
+
+      if (!mounted) {
+        return;
+      }
+
+      _showReportDetailsSheet(detail);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not load report details.')),
+      );
+    }
+  }
+
+  void _showReportDetailsSheet(Map<String, dynamic> detail) {
+    final statusKey = detail['status']?.toString();
+    final severityKey = detail['severity']?.toString();
+    final category = detail['category']?.toString() ?? detail['garbage_type']?.toString();
+    final description = detail['description']?.toString();
+    final address = detail['address']?.toString();
+    final createdAt = detail['created_at']?.toString();
+    final latitude = detail['latitude'];
+    final longitude = detail['longitude'];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Report Details',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (statusKey != null)
+                      _buildTag(
+                        text: AppConstants.statusLabels[statusKey] ?? statusKey,
+                        color: Color(AppConstants.statusColors[statusKey] ?? 0xFF9E9E9E),
+                        textColor: Colors.white,
+                      ),
+                    if (severityKey != null)
+                      _buildTag(
+                        text: AppConstants.severityLabels[severityKey] ?? severityKey,
+                        color: Color(
+                          AppConstants.severityColors[severityKey] ?? 0xFF9E9E9E,
+                        ).withValues(alpha: 0.2),
+                        textColor: Color(
+                          AppConstants.severityColors[severityKey] ?? 0xFF9E9E9E,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (category != null) _buildDetailRow('Type', category),
+                if (address != null && address.isNotEmpty) _buildDetailRow('Address', address),
+                if (latitude != null && longitude != null)
+                  _buildDetailRow('Coordinates', '${latitude.toString()}, ${longitude.toString()}'),
+                if (createdAt != null) _buildDetailRow('Reported', _formatDate(createdAt)),
+                if (description != null && description.isNotEmpty)
+                  _buildDetailRow('Description', description),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTag({
+    required String text,
+    required Color color,
+    required Color textColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 2),
+          Text(value),
+        ],
+      ),
+    );
   }
 }
 

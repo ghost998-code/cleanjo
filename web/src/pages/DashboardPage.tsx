@@ -8,18 +8,8 @@ import {
   MapPinned,
   TrendingUp,
 } from 'lucide-react'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import ReactECharts from 'echarts-for-react'
+import { EChartsOption } from 'echarts'
 
 import ReportsMap from '../components/ReportsMap'
 import api from '../services/api'
@@ -68,9 +58,9 @@ export default function DashboardPage() {
     isFetching: fetchingReports,
     isError: isReportsError,
   } = useQuery({
-    queryKey: ['map-reports', { page_size: 1000 }],
+    queryKey: ['map-reports', { page_size: 100 }],
     queryFn: async () => {
-      const response = await api.get<ReportListResponse>('/reports', { params: { page_size: '1000' } })
+      const response = await api.get<ReportListResponse>('/reports', { params: { page_size: '100' } })
       return response.data.items || []
     },
     placeholderData: [],
@@ -101,6 +91,95 @@ export default function DashboardPage() {
   const reviewedReports =
     (analytics?.by_status?.under_review || 0) +
     (analytics?.by_status?.scheduled || 0)
+
+  const statusOption: EChartsOption = {
+    animationDuration: 550,
+    color: statusData.map((item) => item.color),
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    legend: { bottom: 0, left: 'center', textStyle: { color: '#475569' } },
+    series: [
+      {
+        name: 'Status',
+        type: 'pie',
+        radius: ['48%', '72%'],
+        center: ['50%', '42%'],
+        label: { show: false },
+        itemStyle: { borderColor: '#ffffff', borderWidth: 3 },
+        emphasis: {
+          label: { show: true, formatter: '{b}\n{d}%', fontWeight: 700, color: '#0f172a' },
+          scale: true,
+          scaleSize: 6,
+        },
+        data: statusData.map((item) => ({ name: item.name.replace('_', ' '), value: item.value })),
+      },
+    ],
+  }
+
+  const severityOption: EChartsOption = {
+    animationDuration: 550,
+    color: severityData.map((item) => item.color),
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    legend: { bottom: 0, left: 'center', textStyle: { color: '#475569' } },
+    series: [
+      {
+        name: 'Severity',
+        type: 'pie',
+        radius: ['48%', '72%'],
+        center: ['50%', '42%'],
+        label: { show: false },
+        itemStyle: { borderColor: '#ffffff', borderWidth: 3 },
+        emphasis: {
+          label: { show: true, formatter: '{b}\n{d}%', fontWeight: 700, color: '#0f172a' },
+          scale: true,
+          scaleSize: 6,
+        },
+        data: severityData.map((item) => ({ name: item.name, value: item.value })),
+      },
+    ],
+  }
+
+  const trendOption: EChartsOption = {
+    animationDuration: 700,
+    tooltip: { trigger: 'axis' },
+    grid: { left: 18, right: 18, top: 20, bottom: 26, containLabel: true },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      axisLine: { lineStyle: { color: '#cbd5e1' } },
+      axisTick: { show: false },
+      axisLabel: { color: '#64748b', formatter: (value: string) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) },
+      data: analytics?.daily_trend?.map((item) => item.date) || [],
+    },
+    yAxis: {
+      type: 'value',
+      minInterval: 1,
+      axisLabel: { color: '#64748b' },
+      splitLine: { lineStyle: { color: '#e2e8f0' } },
+    },
+    series: [
+      {
+        name: 'Reports',
+        type: 'line',
+        smooth: true,
+        showSymbol: false,
+        lineStyle: { width: 3, color: '#16a34a' },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(34,197,94,0.34)' },
+              { offset: 1, color: 'rgba(34,197,94,0.03)' },
+            ],
+          },
+        },
+        data: analytics?.daily_trend?.map((item) => item.count) || [],
+      },
+    ],
+  }
 
   return (
     <div className="space-y-8 text-slate-900">
@@ -196,29 +275,9 @@ export default function DashboardPage() {
                 <p className="text-sm text-slate-500">Reports by status in the selected period</p>
               </div>
             </div>
-            <div className="h-64">
+            <div className="h-72">
               {statusData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={statusData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={82}
-                      paddingAngle={4}
-                      dataKey="value"
-                      label={({ name, percent }) =>
-                        `${name} (${(percent * 100).toFixed(0)}%)`
-                      }
-                    >
-                      {statusData.map((entry, index) => (
-                        <Cell key={`status-cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <ReactECharts option={statusOption} style={{ height: '100%', width: '100%' }} />
               ) : (
                 <div className="flex h-full items-center justify-center text-gray-400">
                   No data available
@@ -229,29 +288,9 @@ export default function DashboardPage() {
 
           <div className="rounded-[2rem] bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold text-slate-900">Reports by Severity</h2>
-            <div className="h-64">
+            <div className="h-72">
               {severityData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={severityData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={82}
-                      paddingAngle={4}
-                      dataKey="value"
-                      label={({ name, percent }) =>
-                        `${name} (${(percent * 100).toFixed(0)}%)`
-                      }
-                    >
-                      {severityData.map((entry, index) => (
-                        <Cell key={`severity-cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <ReactECharts option={severityOption} style={{ height: '100%', width: '100%' }} />
               ) : (
                 <div className="flex h-full items-center justify-center text-gray-400">
                   No data available
@@ -264,27 +303,9 @@ export default function DashboardPage() {
 
       <div className="rounded-[2rem] bg-white p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold text-gray-800">Daily Trend (Last 30 Days)</h2>
-        <div className="h-64">
+        <div className="h-72">
           {analytics?.daily_trend && analytics.daily_trend.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={analytics.daily_trend}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(value) =>
-                    new Date(value).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    })
-                  }
-                />
-                <YAxis />
-                <Tooltip
-                  labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                />
-                <Bar dataKey="count" fill="#22C55E" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <ReactECharts option={trendOption} style={{ height: '100%', width: '100%' }} />
           ) : (
             <div className="flex h-full items-center justify-center text-gray-400">
               No data available

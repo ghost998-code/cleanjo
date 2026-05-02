@@ -20,7 +20,7 @@ type MapReportsQueryKey = [
   'map-reports',
   {
     page_size: number
-    status: string
+    status?: string
   },
 ]
 

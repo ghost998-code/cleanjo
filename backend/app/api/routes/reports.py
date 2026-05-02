@@ -89,6 +89,15 @@ async def publish_report_event(event_type: str, report: Report) -> None:
         print(f"Failed to publish to kafka: {e}")
 
 
+async def fetch_report_with_user(db: AsyncSession, report_id: UUID) -> Optional[Report]:
+    result = await db.execute(
+        select(Report)
+        .where(Report.id == report_id, Report.deleted_at.is_(None))
+        .options(selectinload(Report.user))
+    )
+    return result.scalar_one_or_none()
+
+
 photo_metadata_adapter = TypeAdapter(List[ReportPhotoCreate])
 report_inference_summary_adapter = TypeAdapter(ReportInferenceSummary)
 
@@ -526,11 +535,13 @@ async def update_report(
         details={"fields": list(update_dict.keys())},
     )
     await db.commit()
-    await db.refresh(report)
+    refreshed_report = await fetch_report_with_user(db, report.id)
+    if not refreshed_report:
+        raise HTTPException(status_code=404, detail="Report not found")
 
-    await publish_report_event("UPDATED", report)
+    await publish_report_event("UPDATED", refreshed_report)
 
-    return report
+    return refreshed_report
 
 
 @router.put("/{report_id}/status", response_model=ReportResponse)
@@ -566,9 +577,12 @@ async def update_report_status(
         details={"from": old_status.value, "to": status_update.status.value},
     )
     await db.commit()
-    await db.refresh(report)
-    await publish_report_event("UPDATED", report)
-    return report
+    refreshed_report = await fetch_report_with_user(db, report.id)
+    if not refreshed_report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    await publish_report_event("UPDATED", refreshed_report)
+    return refreshed_report
 
 
 @router.delete("/{report_id}", status_code=status.HTTP_204_NO_CONTENT)

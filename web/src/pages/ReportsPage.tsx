@@ -1,10 +1,18 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../services/api'
-import { Report, ReportListResponse } from '../types'
+import { Report, ReportDetail, ReportListResponse } from '../types'
 import { format } from 'date-fns'
 import clsx from 'clsx'
 import { Clock, Filter, Check, X, AlertTriangle, User, MapPin } from 'lucide-react'
+
+const STATUS_TRANSITIONS: Record<Report['status'], Report['status'][]> = {
+  submitted: ['under_review', 'rejected'],
+  under_review: ['scheduled', 'cleaned', 'rejected'],
+  scheduled: ['cleaned', 'rejected'],
+  cleaned: [],
+  rejected: [],
+}
 
 const STATUS_COLORS: Record<string, string> = {
   submitted: 'bg-slate-800 text-slate-300 border border-slate-700',
@@ -28,6 +36,11 @@ export default function ReportsPage() {
     severity: '',
   })
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
+  const [selectedReportDetail, setSelectedReportDetail] = useState<ReportDetail | null>(null)
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false)
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const [statusError, setStatusError] = useState<string | null>(null)
+  const [detailError, setDetailError] = useState<string | null>(null)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['reports', { page, status: filters.status, severity: filters.severity }],
@@ -55,14 +68,41 @@ export default function ReportsPage() {
   const reports = data?.items ?? []
   const pagination = data ?? { page, total_pages: 1, total: 0, page_size: 20, items: [] }
 
-  const updateStatus = async (reportId: string, status: string) => {
+  const updateStatus = async (reportId: string, status: Report['status']) => {
+    setStatusError(null)
+    setIsUpdatingStatus(true)
     try {
-      await api.patch(`/reports/${reportId}`, { status })
+      await api.put(`/reports/${reportId}/status`, { status })
       refetch()
       setSelectedReport(null)
     } catch (error) {
       console.error(error)
+      setStatusError('Unable to update report status. Please try again.')
+    } finally {
+      setIsUpdatingStatus(false)
     }
+  }
+
+  const openReviewModal = async (report: Report) => {
+    setStatusError(null)
+    setDetailError(null)
+    setSelectedReport(report)
+    setSelectedReportDetail(null)
+    setIsLoadingDetail(true)
+    try {
+      const response = await api.get<ReportDetail>(`/reports/${report.id}`)
+      setSelectedReportDetail(response.data)
+    } catch (error) {
+      console.error(error)
+      setDetailError('Unable to load full report details. Showing basic info.')
+    } finally {
+      setIsLoadingDetail(false)
+    }
+  }
+
+  const canTransitionTo = (targetStatus: Report['status']) => {
+    if (!selectedReport) return false
+    return STATUS_TRANSITIONS[selectedReport.status]?.includes(targetStatus) ?? false
   }
 
   return (
@@ -188,7 +228,7 @@ export default function ReportsPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button
-                        onClick={() => setSelectedReport(report)}
+                        onClick={() => openReviewModal(report)}
                         className="inline-flex items-center justify-center rounded-full bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
                       >
                         Review
@@ -231,7 +271,12 @@ export default function ReportsPage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-slate-900">Report Review</h2>
                 <button
-                  onClick={() => setSelectedReport(null)}
+                  onClick={() => {
+                    setStatusError(null)
+                    setDetailError(null)
+                    setSelectedReport(null)
+                    setSelectedReportDetail(null)
+                  }}
                   className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                 >
                   <X className="h-5 w-5" />
@@ -291,42 +336,76 @@ export default function ReportsPage() {
                 <p className="mt-1 text-slate-900">{selectedReport.description || 'No description provided.'}</p>
               </div>
 
-              {selectedReport.image_url && (
+              {detailError && (
+                <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  {detailError}
+                </p>
+              )}
+
+              {isLoadingDetail && (
+                <div className="mb-6 flex h-64 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent"></div>
+                </div>
+              )}
+
+              {((selectedReportDetail?.photos?.length || 0) > 0 || selectedReport.image_url) && (
                 <div className="mb-6">
                   <p className="mb-2 text-sm text-slate-500">Image Evidence</p>
-                  <img
-                    src={selectedReport.image_url}
-                    alt="Report"
-                    className="h-64 w-full rounded-2xl object-cover"
-                  />
+                  {(selectedReportDetail?.photos?.length || 0) > 0 ? (
+                    <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2">
+                      {selectedReportDetail!.photos.map((photo, index) => (
+                        <img
+                          key={photo.id}
+                          src={photo.image_url}
+                          alt={`Report evidence ${index + 1}`}
+                          className="h-64 w-full min-w-full snap-center rounded-2xl object-cover"
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <img
+                      src={selectedReport.image_url}
+                      alt="Report"
+                      className="h-64 w-full rounded-2xl object-cover"
+                    />
+                  )}
                 </div>
               )}
             </div>
 
             <div className="border-t border-slate-100 bg-slate-50 px-6 py-4">
               <p className="mb-3 text-sm font-medium text-slate-700">Update Status</p>
+              {statusError && (
+                <p className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {statusError}
+                </p>
+              )}
               <div className="flex flex-wrap gap-2">
                 <button
+                  disabled={!canTransitionTo('under_review') || isUpdatingStatus}
                   onClick={() => updateStatus(selectedReport.id, 'under_review')}
-                  className="flex items-center gap-2 rounded-full bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-300"
+                  className="flex items-center gap-2 rounded-full bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Clock className="h-4 w-4" /> Under Review
                 </button>
                 <button
+                  disabled={!canTransitionTo('scheduled') || isUpdatingStatus}
                   onClick={() => updateStatus(selectedReport.id, 'scheduled')}
-                  className="flex items-center gap-2 rounded-full bg-amber-100 px-4 py-2 text-sm font-medium text-amber-700 transition hover:bg-amber-200"
+                  className="flex items-center gap-2 rounded-full bg-amber-100 px-4 py-2 text-sm font-medium text-amber-700 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Check className="h-4 w-4" /> Schedule
                 </button>
                 <button
+                  disabled={!canTransitionTo('cleaned') || isUpdatingStatus}
                   onClick={() => updateStatus(selectedReport.id, 'cleaned')}
-                  className="flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-200"
+                  className="flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Check className="h-4 w-4" /> Mark Cleaned
                 </button>
                 <button
+                  disabled={!canTransitionTo('rejected') || isUpdatingStatus}
                   onClick={() => updateStatus(selectedReport.id, 'rejected')}
-                  className="flex items-center gap-2 rounded-full bg-red-100 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-200"
+                  className="flex items-center gap-2 rounded-full bg-red-100 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-200 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <X className="h-4 w-4" /> Rejected
                 </button>

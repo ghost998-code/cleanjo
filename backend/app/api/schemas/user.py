@@ -6,7 +6,7 @@ from app.core.constants import UserRole
 
 
 class UserBase(BaseModel):
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     full_name: Optional[str] = None
     phone: Optional[str] = None
 
@@ -37,7 +37,7 @@ class AdminPreferences(BaseModel):
 
 class AdminSettingsResponse(BaseModel):
     full_name: Optional[str] = None
-    email: EmailStr
+    email: str
     phone: Optional[str] = None
     role: UserRole
     preferences: AdminPreferences
