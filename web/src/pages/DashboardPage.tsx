@@ -287,7 +287,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">Reports by Severity</h2>
+            <h2 className=" text-lg font-semibold text-slate-900">Reports by Severity</h2>
             <div className="h-72">
               {severityData.length > 0 ? (
                 <ReactECharts option={severityOption} style={{ height: '100%', width: '100%' }} />

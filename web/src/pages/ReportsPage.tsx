@@ -5,6 +5,9 @@ import { Report, ReportDetail, ReportListResponse } from '../types'
 import { format } from 'date-fns'
 import clsx from 'clsx'
 import { Clock, Filter, Check, X, AlertTriangle, User, MapPin } from 'lucide-react'
+import Lightbox from 'yet-another-react-lightbox'
+import Zoom from 'yet-another-react-lightbox/plugins/zoom'
+import 'yet-another-react-lightbox/styles.css'
 
 const STATUS_TRANSITIONS: Record<Report['status'], Report['status'][]> = {
   submitted: ['under_review', 'rejected'],
@@ -41,6 +44,8 @@ export default function ReportsPage() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
   const [detailError, setDetailError] = useState<string | null>(null)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(0)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['reports', { page, status: filters.status, severity: filters.severity }],
@@ -104,6 +109,13 @@ export default function ReportsPage() {
     if (!selectedReport) return false
     return STATUS_TRANSITIONS[selectedReport.status]?.includes(targetStatus) ?? false
   }
+
+  const evidenceImages =
+    selectedReportDetail?.photos?.length
+      ? selectedReportDetail.photos.map((photo) => photo.image_url)
+      : selectedReport?.image_url
+        ? [selectedReport.image_url]
+        : []
 
   return (
     <div className="space-y-6 text-slate-900 dark:text-slate-100">
@@ -354,20 +366,38 @@ export default function ReportsPage() {
                   {(selectedReportDetail?.photos?.length || 0) > 0 ? (
                     <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2">
                       {selectedReportDetail!.photos.map((photo, index) => (
-                        <img
+                        <button
                           key={photo.id}
-                          src={photo.image_url}
-                          alt={`Report evidence ${index + 1}`}
-                          className="h-64 w-full min-w-full snap-center rounded-2xl object-cover"
-                        />
+                          type="button"
+                          onClick={() => {
+                            setLightboxIndex(index)
+                            setLightboxOpen(true)
+                          }}
+                          className="min-w-full snap-center overflow-hidden rounded-2xl"
+                        >
+                          <img
+                            src={photo.image_url}
+                            alt={`Report evidence ${index + 1}`}
+                            className="h-72 w-full object-contain bg-slate-100"
+                          />
+                        </button>
                       ))}
                     </div>
                   ) : (
-                    <img
-                      src={selectedReport.image_url}
-                      alt="Report"
-                      className="h-64 w-full rounded-2xl object-cover"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLightboxIndex(0)
+                        setLightboxOpen(true)
+                      }}
+                      className="w-full overflow-hidden rounded-2xl"
+                    >
+                      <img
+                        src={selectedReport.image_url}
+                        alt="Report"
+                        className="h-72 w-full object-contain bg-slate-100"
+                      />
+                    </button>
                   )}
                 </div>
               )}
@@ -414,6 +444,13 @@ export default function ReportsPage() {
           </div>
         </div>
       )}
+      <Lightbox
+        open={lightboxOpen}
+        close={() => setLightboxOpen(false)}
+        index={lightboxIndex}
+        slides={evidenceImages.map((src) => ({ src }))}
+        plugins={[Zoom]}
+      />
     </div>
   )
 }

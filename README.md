@@ -1,223 +1,111 @@
-# GPS-Based Garbage Detection System
+# 🌍 CleanJo: GPS-Based Garbage Detection System
 
-A full-stack application for reporting, tracking, and managing garbage cleanup efforts using GPS-based detection.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Architecture
+A robust, full-stack application designed for reporting, tracking, and managing community garbage cleanup efforts using GPS-based detection.
 
+---
+
+## 🏗️ Architecture Overview
+
+```text
+├── 🐍 backend/         # FastAPI backend (Python) with Kafka integration
+├── 📱 mobile/          # Flutter mobile application (iOS & Android)
+├── 🌐 web/             # React web dashboard for admins
+└── 🐳 docker-compose.yml
 ```
-├── backend/          # FastAPI backend with Kafka integration
-├── mobile/           # Flutter mobile app (iOS & Android)
-├── web/              # React web dashboard (Admin)
-├── docker-compose.yml
-└── README.md
-```
 
-## Tech Stack
+---
+
+## 🛠️ Tech Stack
 
 | Component | Technology |
-|-----------|-----------|
-| Mobile App | Flutter 3.x / Dart |
-| Web Dashboard | React + Tailwind CSS |
-| Backend | FastAPI (Python) |
-| Database | PostgreSQL + PostGIS |
-| Event Streaming | Apache Kafka |
-| Image Storage | Cloudinary / AWS S3 |
-| Auth | JWT |
-| Mapping | OpenStreetMap (mobile: flutter_map, web: Leaflet) |
+| :--- | :--- |
+| **Mobile App** | Flutter 3.x, Dart |
+| **Web Dashboard** | React, Tailwind CSS |
+| **Backend API** | Python, FastAPI |
+| **Database** | PostgreSQL, PostGIS |
+| **Event Streaming** | Apache Kafka |
+| **File Storage** | Cloudinary / AWS S3 |
+| **Auth** | JWT |
+| **Mapping** | Google Maps (mobile: google_maps_flutter, web: @react-google-maps/api) |
 
-## Quick Start
+---
 
-### 1. Start Infrastructure
+## ✨ Key Features
 
+### 📱 Mobile App
+- **User Auth:** Phone number registration and secure sign-in via OTP.
+- **Reporting:** GPS-tagged garbage reports with photo uploads.
+- **Syncing:** Offline queue system with automatic synchronization.
+- **Maps:** Interactive map view with marker clustering.
+- **Tracking:** Real-time report status updates.
+- **Roles:** Dynamic UI for citizens vs. inspectors.
+
+### 🌐 Web Dashboard
+- **Analytics:** Dashboard featuring performance statistics and charts.
+- **Management:** Full control over reports (filter, view, update status).
+- **Administration:** User management with role-based access control.
+- **Visuals:** Interactive heatmap-based map view.
+- **Real-time:** Live status updates via WebSocket integration.
+
+### 🐍 Backend Services
+- **API:** RESTful interface with JWT security.
+- **Events:** Asynchronous processing using Kafka event streaming.
+- **Notifications:** Automated system for status changes.
+- **Geospatial:** Advanced spatial queries with PostGIS.
+
+---
+
+## 🚀 Getting Started
+
+### 1. Infrastructure
+Ensure Docker is installed and run:
 ```bash
 docker-compose up -d
 ```
 
-This starts PostgreSQL, Redis, Kafka, and Zookeeper.
-
 ### 2. Backend Setup
-
 ```bash
 cd backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-
-# Copy environment file
-cp .env.example .env
-# Edit .env with your configuration
-
-# Run migrations
 alembic upgrade head
-
-# Start server
 uvicorn app.main:app --reload
 ```
 
-API will be available at `http://localhost:8000`
-
-To test from a physical phone on the same Wi-Fi network, bind the backend to all interfaces instead:
-
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Then run the mobile app with your computer's LAN IP passed to Flutter:
-
-```bash
-flutter run --dart-define=CLEANJO_API_BASE_URL=http://YOUR_LAN_IP:8000/api/v1
-```
-
-### 3. Web Dashboard Setup
-
+### 3. Web Dashboard
 ```bash
 cd web
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
 
-Dashboard will be available at `http://localhost:3000`
-
-### 4. Mobile App Setup
-
+### 4. Mobile App
 ```bash
 cd mobile
-
-# Install dependencies
 flutter pub get
-
-# Run on device/emulator
 flutter run
-
-# Run on a physical phone on the same network
-flutter run --dart-define=CLEANJO_API_BASE_URL=http://YOUR_LAN_IP:8000/api/v1
 ```
 
-For the Android Google Map view, add your Google Maps API key to `mobile/android/local.properties`:
+---
 
-```properties
-MAPS_API_KEY=your_android_google_maps_api_key
-```
-
-## API Documentation
-
-Once the backend is running, visit:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-
-## Admin Account CLI
-
-Create or update an admin user from the backend directory:
-
+## 🔑 Admin Management
+Create admin users via CLI from the backend:
 ```bash
-python -m app.cli create-admin \
-  --phone "+962790000000" \
-  --full-name "Admin User" \
-  --email "admin@example.com" \
-  --password "admin123"
+python -m app.cli create-admin
 ```
 
-You can also omit flags and the CLI will prompt for them interactively.
+---
 
-The web dashboard is admin-only and uses password login on `/admin/login`. Citizen registration and sign-in happen in the mobile app with phone number OTP verification.
-
-## Features
-
-### Mobile App
-- Phone number registration and sign-in with OTP verification
-- GPS-based garbage reporting with photo upload
-- Offline queue with automatic sync
-- Interactive map with marker clustering
-- Report status tracking
-- Role-based UI (citizen vs inspector views)
-
-### Web Dashboard
-- Admin-only access for statistics and operational oversight
-- Dashboard with analytics charts
-- Reports management (filter, view, update status)
-- User management (change roles)
-- Interactive map with heatmap view
-- Real-time status updates
-
-### Backend
-- RESTful API with JWT authentication
-- Kafka event streaming for async processing
-- Notification worker for status updates
-- Backend-managed local file uploads
-- Geo-queries with PostGIS support
-
-## Development
-
-### Run Workers
-
-```bash
-# Notification Worker
-python -m app.workers.notification_worker
+## 📁 Project Structure
+```text
+backend/          # API, Services, Models, Workers
+mobile/           # Core Logic, Feature Modules, UI
+web/              # Pages, Components, Hooks, API Client
 ```
 
-### Database Migrations
+---
 
-```bash
-cd backend
-
-# Create new migration
-alembic revision --autogenerate -m "Description"
-
-# Apply migrations
-alembic upgrade head
-
-# Rollback
-alembic downgrade -1
-```
-
-## Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | postgresql+asyncpg://... |
-| `REDIS_URL` | Redis connection string | redis://localhost:6379 |
-| `KAFKA_BOOTSTRAP_SERVERS` | Kafka broker address | localhost:9092 |
-| `JWT_SECRET_KEY` | JWT signing key | (change in production) |
-| `PUBLIC_BASE_URL` | Base URL used for served uploads | http://localhost:8000 |
-
-## Project Structure
-
-```
-backend/
-├── app/
-│   ├── api/          # Routes and schemas
-│   ├── core/         # Config, database, security
-│   ├── models/       # SQLAlchemy models
-│   ├── services/     # Business logic (Kafka, images)
-│   ├── workers/      # Background workers
-│   └── main.py       # FastAPI app entry point
-├── alembic/          # Database migrations
-└── requirements.txt
-
-mobile/
-├── lib/
-│   ├── core/         # Auth, network, DI
-│   ├── features/     # Feature modules
-│   └── main.dart
-└── pubspec.yaml
-
-web/
-├── src/
-│   ├── components/   # Reusable components
-│   ├── pages/        # Page components
-│   ├── hooks/         # Custom hooks
-│   └── services/     # API client
-└── package.json
-```
-
-## License
-
-MIT
+## ⚖️ License
+Distributed under the **MIT License**.
